@@ -87,25 +87,25 @@ object DCalTokenizer {
       }
 
     private val stringLiteral: Parser[Token] =
-    withPosition {
-      val character: Parser[Char] = elem("character", ch => ch != '"' && ch != '\\') |
-        elem('\\') ~> acceptMatch("escape sequence", {
-          case '\\' => '\\'
-          case '"' => '\"'
-          case 'n' => '\n'
-          case 't' => '\t'
-        })
-      (elem('"') ~> rep(character) <~ elem('"'))
-        .map(characters => TokenData.StringLiteral(characters.mkString))
-    }
+      withPosition {
+        val character: Parser[Char] = elem("character", ch => ch != '"' && ch != '\\') |
+          elem('\\') ~> acceptMatch("escape sequence", {
+            case '\\' => '\\'
+            case '"' => '\"'
+            case 'n' => '\n'
+            case 't' => '\t'
+          })
+        (elem('"') ~> rep(character) <~ elem('"'))
+          .map(characters => TokenData.StringLiteral(characters.mkString))
+      }
 
-    private val name: Parser[Token] =
-    withPosition {
-      val underscore: Parser[Char] = elem('_')
-      val character: Parser[Char] = underscore | alphabetic | numeric
-      (rep(underscore | numeric) ~ alphabetic ~ rep(character))
-        .map{ case c1 ~ c2 ~ c3 => TokenData.Name(s"${c1.mkString}${c2}${c3.mkString}") }
-    }
+    val name: Parser[Token] =
+      withPosition {
+        val underscore: Parser[Char] = elem('_')
+        val character: Parser[Char] = underscore | alphabetic | numeric
+        (rep(underscore | numeric) ~ alphabetic ~ rep(character))
+          .map{ case c1 ~ c2 ~ c3 => TokenData.Name(s"${c1.mkString}${c2}${c3.mkString}") }
+      }
 
     private val fixedTokens: Parser[Token] =
       List(
@@ -137,8 +137,8 @@ object DCalTokenizer {
 
     private val singleToken: Parser[Option[Token]] = (
       intLiteral | stringLiteral | fixedTokens | name
-    ).map(Some(_)) |
-        whitespace.map(_ => None)
+      ).map(Some(_)) |
+      whitespace.map(_ => None)
 
     def apply(chars: IterableOnce[Char],
               startLine: Int = 1, startColumn: Int = 1,
