@@ -5,10 +5,17 @@ EXTENDS Integers, FiniteSets
 mt(_state1) ==
     _state1
 
-\* DCal: def resetString() { str = "new string" }
+\* DCal: def resetString() { str := "new string" }
 resetString(_state1) ==
     LET
         _state2 == { [s EXCEPT !.str = "new string"]: s \in _state1 }
+    IN
+        _state2
+
+\* DCal: def baz() { y := y - 1 || x := x + 1 }
+baz(_state1) ==
+    LET
+        _state2 == { [s EXCEPT !.y = s.y - 1, !.x = s.x + 1]: s \in _state1 }
     IN
         _state2
 
