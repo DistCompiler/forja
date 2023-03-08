@@ -51,7 +51,7 @@ object DCalAST {
     case AssignPairs(assignPairs: List[AssignPair])
     case Let(name: String, expression: Expression)
     case Var(name: String, expressionOpt: Option[(BinOp, Expression)])
-    case If(predicate: Expression, thenBlock: Block, elseBlock: Option[Block])
+    case IfThenElse(predicate: Expression, thenBlock: Block, elseBlock: Block)
   }
 
   final case class AssignPair(name: String, expression: Expression)

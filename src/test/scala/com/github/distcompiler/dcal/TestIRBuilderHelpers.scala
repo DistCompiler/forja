@@ -10,7 +10,7 @@ class TestIRBuilderHelpers extends AnyFunSuite {
   List(
     GenerateAssignPairsTest(
       ctx = IRBuilder.Context(
-        stateSetCount = 1,
+        state = 1,
         nameInfoOf = Map[String, IRBuilder.NameInfo](
           "str" -> IRBuilder.NameInfo.State
         )
@@ -38,7 +38,7 @@ class TestIRBuilderHelpers extends AnyFunSuite {
     ),
     GenerateAssignPairsTest(
       ctx = IRBuilder.Context(
-        stateSetCount = 1,
+        state = 1,
         nameInfoOf = Map[String, IRBuilder.NameInfo](
           "y" -> IRBuilder.NameInfo.State,
           "x" -> IRBuilder.NameInfo.State

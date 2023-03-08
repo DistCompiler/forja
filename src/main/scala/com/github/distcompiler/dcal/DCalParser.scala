@@ -87,9 +87,9 @@ object DCalParser {
     lazy val statement: Parser[DCalAST.Statement] = {
       val await = (elem(DCalTokenData.Await) ~> expression).map(expr => DCalAST.Statement.Await(expr))
 
-      val `if` = (elem(DCalTokenData.If) ~> expression ~ elem(DCalTokenData.Then) ~ block ~ opt(elem(DCalTokenData.Else) ~> block)).map {
-        case predicate ~ _ ~ thenBlock ~ elseBlockOpt => DCalAST.Statement.If(
-          predicate = predicate, thenBlock = thenBlock, elseBlock = elseBlockOpt
+      val ifThenElse = (elem(DCalTokenData.If) ~> expression ~ elem(DCalTokenData.Then) ~ block ~ elem(DCalTokenData.Else) ~ block).map {
+        case predicate ~ _ ~ thenBlock ~ _ ~ elseBlock => DCalAST.Statement.IfThenElse(
+          predicate = predicate, thenBlock = thenBlock, elseBlock = elseBlock
         )
       }
 
@@ -113,7 +113,7 @@ object DCalParser {
           case name ~ None => DCalAST.Statement.Var(name = name, expressionOpt = None)
         }
 
-      await | `if` | let | `var` | assignPairs
+      await | ifThenElse | let | `var` | assignPairs
     }
 
     // TODO: Operator precedence behaviour needs reworking

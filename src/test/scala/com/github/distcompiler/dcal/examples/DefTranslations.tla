@@ -27,8 +27,7 @@ sum(_state1, p1, p2) ==
                 local == p1 + p2
             IN
                 { [ss EXCEPT !.x = local] : ss \in { s } }
-            : s \in _state1
-        }
+        : s \in _state1 }
     IN
         _state2
 
@@ -47,6 +46,58 @@ foo(_state1) ==
                         _state4 == { ss \in _state3: ss.x < 7 }
                     IN
                         _state4
+        : s \in _state1 }
+    IN
+        _state2
+
+\* DCal: def branch1() { if x <= y then { x := x + 1 } else { y := y - 1 } }
+\* where x, y are state member variables
+branch1(_state1) ==
+    LET
+        _state2 == UNION {
+            IF s.x <= s.y
+            THEN
+                LET _state3 == { [ss EXCEPT !.x = ss.x + 1]: ss \in { s } }
+                IN _state3
+            ELSE
+                LET _state3 == { [ss EXCEPT !.y = ss.y - 1]: ss \in { s } }
+                IN _state3
+        : s \in _state1 }
+    IN
+        _state2
+
+\* DCal: def branch2() { if x <= y then { i := i * x x := x + 1 } else { y := y - 1 } }
+branch2(_state1) ==
+    LET
+        _state2 == UNION {
+            IF s.x <= s.y
+            THEN
+                LET _state3 == { [ss EXCEPT !.i = ss.i * ss.x]: ss \in { s } }
+                IN
+                    LET _state4 == { [sss EXCEPT !.x = sss.x + 1]: sss \in _state3 }
+                    IN _state4
+            ELSE
+                LET _state3 == { [ss EXCEPT !.y = ss.y - 1]: ss \in { s } }
+                IN _state3
+        : s \in _state1 }
+    IN
+        _state2
+
+\* DCal: def branchOnLocal() { let b = TRUE if b then { x := x + 1 } else { y := y - 1 } }
+\* where b is a local
+branchOnLocal(_state1) ==
+    LET
+        _state2 == UNION {
+            LET
+                b == TRUE
+            IN
+                LET
+                    \* if b then { x := x + 1 } else { y := y - 1 }
+                    _state3 == { IF b
+                                 THEN [ss EXCEPT !.x = ss.x + 1]
+                                 ELSE [ss EXCEPT !.y = ss.y - 1]  : ss \in { s } }
+                IN
+                    _state3
             : s \in _state1
         }
     IN

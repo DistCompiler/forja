@@ -104,7 +104,7 @@ class TestDCalParser extends AnyFunSuite {
                   rhs = DCalAST.Expression.IntLiteral(1000)
                 )
               ),
-              DCalAST.Statement.If(
+              DCalAST.Statement.IfThenElse(
                 predicate = DCalAST.Expression.ExpressionBinOp(
                   lhs = DCalAST.Expression.Name("x"),
                   binOp = DCalAST.BinOp.LesserThanOrEqualTo,
@@ -126,18 +126,16 @@ class TestDCalParser extends AnyFunSuite {
                     )
                   )
                 ),
-                elseBlock = Some(
-                  DCalAST.Block(
-                    statements = List(
-                      DCalAST.Statement.AssignPairs(
-                        assignPairs = List(
-                          DCalAST.AssignPair(
-                            name = "y",
-                            expression = DCalAST.Expression.ExpressionBinOp(
-                              lhs = DCalAST.Expression.Name("y"),
-                              binOp = DCalAST.BinOp.Minus,
-                              rhs = DCalAST.Expression.IntLiteral(1)
-                            )
+                elseBlock = DCalAST.Block(
+                  statements = List(
+                    DCalAST.Statement.AssignPairs(
+                      assignPairs = List(
+                        DCalAST.AssignPair(
+                          name = "y",
+                          expression = DCalAST.Expression.ExpressionBinOp(
+                            lhs = DCalAST.Expression.Name("y"),
+                            binOp = DCalAST.BinOp.Minus,
+                            rhs = DCalAST.Expression.IntLiteral(1)
                           )
                         )
                       )

@@ -1,7 +1,7 @@
 package com.github.distcompiler.dcal
 
-import com.github.distcompiler.dcal.DCalAST.Expression.{BracketedExpression, ExpressionBinOp, IntLiteral, Name, StringLiteral}
-import com.github.distcompiler.dcal.DCalAST.Statement.{AssignPairs, Await, If, Let, Var}
+import com.github.distcompiler.dcal.DCalAST.Expression.{BracketedExpression, ExpressionBinOp, False, IntLiteral, Name, StringLiteral, True}
+import com.github.distcompiler.dcal.DCalAST.Statement.{AssignPairs, Await, IfThenElse, Let, Var}
 import com.github.distcompiler.dcal.DCalParser.*
 
 import scala.collection.mutable.ListBuffer
@@ -23,27 +23,29 @@ object IRBuilder {
   // Context tracks the current state that exists in the program and the mapping of names to name infos, where name
   // is the string literal referring to the name and name info categorises the name itself (either a local or a state
   // member variable)
-  final case class Context(stateSetCount: Int,
+  final case class Context(state: Int,
                            nameInfoOf: Map[String,NameInfo],
                            stateName: String = null) {
-    def withStateSetCount(stateSetCount: Int): Context =
-      copy(stateSetCount = stateSetCount)
+
+    def withState(state: Int): Context =
+      copy(state = state)
 
     def withNameInfo(name: String, nameInfo: NameInfo): Context =
       copy(nameInfoOf = nameInfoOf.updated(name, nameInfo))
 
     def withStateName(stateName: String): Context =
       copy(stateName = stateName)
-  }
 
-  private def getStateName(i: Int): String = {
-    s"_state$i"
+    val _stateName: String = {
+      s"_state$state"
+    }
   }
 
   def generateBinOp(dcalBinOp: DCalAST.BinOp): IR.Node = {
     dcalBinOp match {
       case DCalAST.BinOp.Plus => IR.Node.Uninterpreted(" + ")
       case DCalAST.BinOp.Minus => IR.Node.Uninterpreted(" - ")
+      case _ => ???
     }
   }
 
@@ -52,13 +54,17 @@ object IRBuilder {
       case ExpressionBinOp(lhs, binOp, rhs) =>
         generateExpression(lhs) ++ List(generateBinOp(binOp)) ++ generateExpression(rhs)
 
+      case True => List(IR.Node.Uninterpreted("TRUE"))
+
+      case False => List(IR.Node.Uninterpreted("FALSE"))
+
       case IntLiteral(value) => List(IR.Node.Uninterpreted(value.toString))
 
       case StringLiteral(value) => List(IR.Node.Uninterpreted(s""""$value""""))
 
       case Name(name) => ctx.nameInfoOf(name) match {
-        case NameInfo.Local => ???
         case NameInfo.State => List(IR.Node.Name(ctx.stateName), IR.Node.Uninterpreted(s".$name"))
+        case _ => ???
       }
 
       case BracketedExpression(expr) =>
@@ -103,11 +109,9 @@ object IRBuilder {
       def delimitHelper(lst: List[DCalAST.AssignPair], acc: ListBuffer[IR.Node]): ListBuffer[IR.Node] = {
         lst match {
           case Nil => acc
-          case h::t => {
-            t match {
-              case Nil => delimitHelper(t, acc :++ generateAssignPair(h)(using ctx))
-              case _ => delimitHelper(t, acc :++ (generateAssignPair(h)(using ctx) += IR.Node.Uninterpreted(", ")))
-            }
+          case h::t => t match {
+            case Nil => delimitHelper(t, acc :++ generateAssignPair(h)(using ctx))
+            case _ => delimitHelper(t, acc :++ (generateAssignPair(h)(using ctx) += IR.Node.Uninterpreted(", ")))
           }
         }
       }
@@ -130,7 +134,7 @@ object IRBuilder {
 
     // If we are generating a MapOnSet, the proc is operating on setMember so setMember should be passed into context
     List(IR.Node.MapOnSet(
-      set = List(IR.Node.Name(getStateName(ctx.stateSetCount))),
+      set = List(IR.Node.Name(ctx._stateName)),
       setMember = setMember,
       proc = generateProc(using ctx.withStateName(setMember))
     ))
@@ -146,7 +150,7 @@ object IRBuilder {
       case AssignPairs(assignPairs) => generateAssignPairs(assignPairs)
       case Let(name: String, expression: DCalAST.Expression) => ???
       case Var(name: String, optExpression: Option[(DCalAST.BinOp, DCalAST.Expression)]) => ???
-      case If(predicate: DCalAST.Expression, thenBlock: DCalAST.Block, optElseBlock: Option[DCalAST.Block]) => ???
+      case IfThenElse(predicate: DCalAST.Expression, thenBlock: DCalAST.Block, elseBlock: DCalAST.Block) => ???
     }
   }
 
@@ -163,34 +167,36 @@ object IRBuilder {
   def generateStatements(dcalStmts: List[DCalAST.Statement])
                         (using ctx: Context): List[IR.Node] = {
     dcalStmts match {
-      case Nil => List(IR.Node.Name(getStateName(ctx.stateSetCount)))
+      case Nil => List(IR.Node.Name(ctx._stateName))
       case s::ss =>
-        val newStateCount = ctx.stateSetCount + 1
+        val newCtx = ctx.withState(ctx.state + 1)
         List(
           IR.Node.Let(
-            name = getStateName(newStateCount),
+            name = newCtx._stateName,
             binding = generateStatement(dcalStmt = s),
-            body = generateStatements(dcalStmts = ss)(using ctx.withStateSetCount(newStateCount))
+            body = generateStatements(dcalStmts = ss)(using newCtx)
           )
         )
     }
   }
 
   def generateDefinition(dcalDef: DCalAST.Definition): IR.Definition = {
-    val initialStateCount = 1
-    val states = Map[String, NameInfo](
-      "str" -> NameInfo.State,
-      "x" -> NameInfo.State,
-      "y" -> NameInfo.State,
-      "i" -> NameInfo.State
-    )
+    val initialCtx = Context(
+      state = 1,
+      nameInfoOf = Map[String, NameInfo](
+        "str" -> NameInfo.State,
+        "x" -> NameInfo.State,
+        "y" -> NameInfo.State,
+        "i" -> NameInfo.State
+      ),
+      stateName = null)
 
     IR.Definition(
       name = dcalDef.name,
-      params = getStateName(initialStateCount) +: dcalDef.params,
+      params = initialCtx._stateName +: dcalDef.params,
       body = generateStatements(
         dcalStmts = dcalDef.body.statements
-      )(using Context(stateSetCount = initialStateCount, nameInfoOf = states, stateName = null))
+      )(using initialCtx)
     )
   }
 
