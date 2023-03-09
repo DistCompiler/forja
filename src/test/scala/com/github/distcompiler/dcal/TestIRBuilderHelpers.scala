@@ -4,30 +4,32 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class TestIRBuilderHelpers extends AnyFunSuite {
   final case class GenerateAssignPairsTest(ctx: IRBuilder.Context,
-                                           input: List[DCalAST.AssignPair],
+                                           input: DCalAST.Statement.AssignPairs,
                                            expectedOutput: List[IR.Node])
 
   List(
     GenerateAssignPairsTest(
       ctx = IRBuilder.Context(
-        state = 1,
+        stateName = "_state1",
         nameInfoOf = Map[String, IRBuilder.NameInfo](
           "str" -> IRBuilder.NameInfo.State
         )
       ),
-      input = List(
-        DCalAST.AssignPair(
-          name = "str",
-          expression = DCalAST.Expression.StringLiteral("new string")
+      input = DCalAST.Statement.AssignPairs(
+        assignPairs = List(
+          DCalAST.AssignPair(
+            name = "str",
+            expression = DCalAST.Expression.StringLiteral("new string")
+          )
         )
       ),
       expectedOutput = List(
         IR.Node.MapOnSet(
           set = List(IR.Node.Name("_state1")),
-          setMember = "s",
+          setMember = "l1",
           proc = List(
             IR.Node.Uninterpreted("["),
-            IR.Node.Name("s"),
+            IR.Node.Name("l1"),
             IR.Node.Uninterpreted(" EXCEPT "),
             IR.Node.Uninterpreted("!.str = "),
             IR.Node.Uninterpreted(""""new string""""),
@@ -38,46 +40,48 @@ class TestIRBuilderHelpers extends AnyFunSuite {
     ),
     GenerateAssignPairsTest(
       ctx = IRBuilder.Context(
-        state = 1,
+        stateName = "_state1",
         nameInfoOf = Map[String, IRBuilder.NameInfo](
           "y" -> IRBuilder.NameInfo.State,
           "x" -> IRBuilder.NameInfo.State
         )
       ),
-      input = List(
-        DCalAST.AssignPair(
-          name = "y",
-          expression = DCalAST.Expression.ExpressionBinOp(
-            lhs = DCalAST.Expression.Name("y"),
-            binOp = DCalAST.BinOp.Minus,
-            rhs = DCalAST.Expression.IntLiteral(1)
-          )
-        ),
-        DCalAST.AssignPair(
-          name = "x",
-          expression = DCalAST.Expression.ExpressionBinOp(
-            lhs = DCalAST.Expression.Name("x"),
-            binOp = DCalAST.BinOp.Plus,
-            rhs = DCalAST.Expression.IntLiteral(1)
-          )
-        ),
+      input = DCalAST.Statement.AssignPairs(
+        assignPairs = List(
+          DCalAST.AssignPair(
+            name = "y",
+            expression = DCalAST.Expression.ExpressionBinOp(
+              lhs = DCalAST.Expression.Name("y"),
+              binOp = DCalAST.BinOp.Minus,
+              rhs = DCalAST.Expression.IntLiteral(1)
+            )
+          ),
+          DCalAST.AssignPair(
+            name = "x",
+            expression = DCalAST.Expression.ExpressionBinOp(
+              lhs = DCalAST.Expression.Name("x"),
+              binOp = DCalAST.BinOp.Plus,
+              rhs = DCalAST.Expression.IntLiteral(1)
+            )
+          ),
+        )
       ),
       expectedOutput = List(
         IR.Node.MapOnSet(
           set = List(IR.Node.Name("_state1")),
-          setMember = "s",
+          setMember = "l2",
           proc = List(
             IR.Node.Uninterpreted("["),
-            IR.Node.Name("s"),
+            IR.Node.Name("l2"),
             IR.Node.Uninterpreted(" EXCEPT "),
             IR.Node.Uninterpreted("!.y = "),
-            IR.Node.Name("s"),
+            IR.Node.Name("l2"),
             IR.Node.Uninterpreted(".y"),
             IR.Node.Uninterpreted(" - "),
             IR.Node.Uninterpreted("1"),
             IR.Node.Uninterpreted(", "),
             IR.Node.Uninterpreted("!.x = "),
-            IR.Node.Name("s"),
+            IR.Node.Name("l2"),
             IR.Node.Uninterpreted(".x"),
             IR.Node.Uninterpreted(" + "),
             IR.Node.Uninterpreted("1"),

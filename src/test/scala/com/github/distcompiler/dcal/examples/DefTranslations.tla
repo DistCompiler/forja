@@ -55,14 +55,20 @@ foo(_state1) ==
 branch1(_state1) ==
     LET
         _state2 == UNION {
-            IF s.x <= s.y
+            IF l1.x <= l1.y
             THEN
-                LET _state3 == { [ss EXCEPT !.x = ss.x + 1]: ss \in { s } }
-                IN _state3
+                LET
+                    _state3 == { l1 }
+                IN
+                    LET _state4 == { [l2 EXCEPT !.x = l2.x + 1]: l2 \in _state3 }
+                    IN _state4
             ELSE
-                LET _state3 == { [ss EXCEPT !.y = ss.y - 1]: ss \in { s } }
-                IN _state3
-        : s \in _state1 }
+                LET
+                    _state5 == { l1 }
+                IN
+                    LET _state6 == { [l3 EXCEPT !.y = l3.y - 1]: l3 \in _state5 }
+                    IN _state6
+        : l1 \in _state1 }
     IN
         _state2
 
