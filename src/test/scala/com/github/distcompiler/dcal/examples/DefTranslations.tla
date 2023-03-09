@@ -26,7 +26,10 @@ sum(_state1, p1, p2) ==
             LET
                 local == p1 + p2
             IN
-                { [ss EXCEPT !.x = local] : ss \in { s } }
+                LET _state3 == { l1 }
+                IN
+                    LET _state4 == { [l2 EXCEPT !.x = local] : l2 \in _state3 }
+                    IN _state4
         : s \in _state1 }
     IN
         _state2

@@ -87,18 +87,6 @@ class TestIRBuilder extends AnyFunSuite {
   )
 
   val testLet = "def sum(p1, p2) { let local = p1 + p2 x := local }"
-  // Expected TLA+:
-  //  sum(_state1, p1, p2) ==
-  //    LET
-  //      _state2 == UNION {
-  //          LET
-  //            local == p1 + p2
-  //          IN
-  //            { [ss EXCEPT !.x = local] : ss \in { s } }
-  //          : s \in _state1
-  //      }
-  //    IN
-  //      _state2
   val expectedLet = IR.Definition(
     name = "sum",
     params = List("_state1", "p1", "p2"),
@@ -106,10 +94,10 @@ class TestIRBuilder extends AnyFunSuite {
       IR.Node.Let(
         name = "_state2",
         binding = List(
-          IR.Node.Uninterpreted("UNION { "),
+          IR.Node.Uninterpreted("UNION"),
           IR.Node.MapOnSet(
             set = List( IR.Node.Name("_state1") ),
-            setMember = "s",
+            setMember = "l1",
             proc = List(
               IR.Node.Let(
                 name = "local",
@@ -120,26 +108,34 @@ class TestIRBuilder extends AnyFunSuite {
                 ),
                 // { [ss EXCEPT !.x = local] : ss \in { s } }
                 body = List(
-                  IR.Node.MapOnSet(
-                    set = List(
-                      IR.Node.Uninterpreted("{ "),
-                      IR.Node.Name("s"),
-                      IR.Node.Uninterpreted(" }")
-                    ),
-                    setMember = "ss",
-                    proc = List(
-                      IR.Node.Uninterpreted("["),
-                      IR.Node.Name("ss"),
-                      IR.Node.Uninterpreted(" EXCEPT !.x = "),
-                      IR.Node.Name("local"),
-                      IR.Node.Uninterpreted("]")
+                  IR.Node.Let(
+                    name = "_state3",
+                    binding = List(IR.Node.Uninterpreted("{ "), IR.Node.Name("l1"), IR.Node.Uninterpreted(" }")),
+                    body = List(
+                      IR.Node.Let(
+                        name = "_state4",
+                        binding = List(
+                          IR.Node.MapOnSet(
+                            set = List(IR.Node.Name("_state3")),
+                            setMember = "l2",
+                            proc = List(
+                              IR.Node.Uninterpreted("["),
+                              IR.Node.Name("l2"),
+                              IR.Node.Uninterpreted(" EXCEPT "),
+                              IR.Node.Uninterpreted("!.x = "),
+                              IR.Node.Name("local"),
+                              IR.Node.Uninterpreted("]")
+                            )
+                          )
+                        ),
+                        body = List(IR.Node.Name("_state4"))
+                      )
                     )
                   )
                 )
               )
             )
-          ),
-          IR.Node.Uninterpreted("}")
+          )
         ),
         body = List(
           IR.Node.Name("_state2")
@@ -374,10 +370,6 @@ class TestIRBuilder extends AnyFunSuite {
   )
 
   List(
-    TestUtils.sequenceLines(testModule, testLet) -> IR.Module(
-      name = moduleName,
-      definitions = List(expectedLet)
-    ),
     TestUtils.sequenceLines(testModule, testDefParam) -> IR.Module(
       name = moduleName, definitions = List(expectedDefParam)
     ),
@@ -416,6 +408,10 @@ class TestIRBuilder extends AnyFunSuite {
     ),
     TestUtils.sequenceLines(testModule, testIfThenElse) -> IR.Module(
       name = moduleName, definitions = List(expectedIfThenElse)
+    ),
+    TestUtils.sequenceLines(testModule, testLet) -> IR.Module(
+      name = moduleName,
+      definitions = List(expectedLet)
     ),
     TestUtils.sequenceLines(testModule, testMultiLineDef) -> IR.Module(
       name = moduleName, definitions = List(expectedMultiLineDef)

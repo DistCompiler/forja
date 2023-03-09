@@ -74,7 +74,7 @@ object IRBuilder {
 
       case Name(name) => ctx.nameInfoOf(name) match {
         case NameInfo.State => List(IR.Node.Name(ctx.mapOnSetInfo._1), IR.Node.Uninterpreted(s".$name"))
-        case _ => ???
+        case NameInfo.Local => List(IR.Node.Name(name))
       }
 
       case BracketedExpression(expr) =>
@@ -206,6 +206,39 @@ object IRBuilder {
     )
   }
 
+  def generateLet(dcalLet: DCalAST.Statement.Let, rest: List[DCalAST.Statement])(using ctx: Context): List[IR.Node] = {
+    // 1: Compiles a DCal let statement by generating a MapOnset whose proc is a LET expression. The LET expression's
+    // name and binding should be the DCal let statement's name and expression respectively.
+    // 2: Updates the ctx to contain the DCal name, the state name to be ???, then compiles the rest of the program.
+    val setMember = freshLocal
+    val newState = freshState
+    List(
+      IR.Node.Uninterpreted("UNION"),
+      // { <proc>: <setMember> \in <stateName> }
+      IR.Node.MapOnSet(
+        set = List(IR.Node.Name(ctx.stateName)),
+        setMember = setMember,
+        // TODO: Add setMember to ctx of proc
+        // LET <name> == <expr> IN LET <newstate> == { <setMember> } IN <rest>
+        proc = List(
+          IR.Node.Let(
+            name = dcalLet.name,
+            binding = generateExpression(dcalLet.expression),
+            // <rest> where <name> exists, where <rest> is operated on { <setMember> }
+            body = List(
+              IR.Node.Let(
+                name = newState,
+                binding = List(IR.Node.Uninterpreted("{ "), IR.Node.Name(setMember), IR.Node.Uninterpreted(" }")),
+                body = generateStatements(rest)(using ctx.withNameInfo(setMember, NameInfo.Local).withNameInfo
+                (dcalLet.name, NameInfo.Local).withStateName(newState))
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
 
   /**
    * Maps the DCal statement to the current state set, producing a new state set
@@ -214,7 +247,6 @@ object IRBuilder {
                        (using ctx: Context): List[IR.Node] = {
     dcalStmt match {
       case Await(expr) => List(IR.Node.Uninterpreted("await")) ++ generateExpression(expr)
-      case Let(name: String, expression: DCalAST.Expression) => ???
       case Var(name: String, optExpression: Option[(DCalAST.BinOp, DCalAST.Expression)]) => ???
     }
   }
@@ -245,6 +277,17 @@ object IRBuilder {
               )
             )
           }
+          // LET <newstate> == <let + rest> IN <newstate>
+          case let @ Let(_, _) => {
+            val newState = freshState
+            List(
+              IR.Node.Let(
+                name = newState,
+                binding = generateLet(let, ss)(using ctx),
+                body = List(IR.Node.Name(newState))
+              )
+            )
+          }
           case ifThenElse @ IfThenElse(_, _, _) => {
             val newState = freshState
             List(
@@ -263,7 +306,7 @@ object IRBuilder {
   def generateDefinition(dcalDef: DCalAST.Definition): IR.Definition = {
     lc = 1
     sc = 1
-    val initialCtx = Context(
+    var initialCtx = Context(
       nameInfoOf = Map[String, NameInfo](
         "str" -> NameInfo.State,
         "x" -> NameInfo.State,
@@ -271,6 +314,10 @@ object IRBuilder {
         "i" -> NameInfo.State
       ),
       stateName = freshState
+    )
+
+    dcalDef.params.foreach(
+      param => initialCtx = initialCtx.withNameInfo(param, NameInfo.Local)
     )
 
     IR.Definition(
