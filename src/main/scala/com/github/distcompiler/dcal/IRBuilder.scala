@@ -161,13 +161,15 @@ object IRBuilder {
    *            ELSE LET _state3 == { [s EXCEPT !.y = s.y - 1]: ss \in { s } } IN _state3
    *          : s \in _state1 }
    */
+  // TODO: Remove duplication in then and else
   def generateIfThenElse(dcalIfThenElse: DCalAST.Statement.IfThenElse, rest: List[DCalAST.Statement])
                         (using ctx: Context): List[IR.Node]
   = {
     // 1: Returns a MapOnSet on the current state set, wrapped in UNION
     // 2: For the MapOnSet:
     //    - calls freshName to generate a local to use as the state set member
-    //    - fills in IF ... THEN ... ELSE ... as the proc TODO: Define <pred> in AST
+    //    - fills in IF ... THEN ... ELSE ... as the proc
+    // TODO: Define <pred> in AST, if <pred> then <block> else <block> | if <pred> then <pred> else <pred>
     def generateProc(using ctx: IRBuilder.Context): List[IR.Node] = {
       val pb = ListBuffer[IR.Node](IR.Node.Uninterpreted("IF "))
       val predicate = generateExpression(dcalIfThenElse.predicate)
