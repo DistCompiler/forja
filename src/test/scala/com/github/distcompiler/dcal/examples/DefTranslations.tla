@@ -36,22 +36,37 @@ sum(_state1, p1, p2) ==
 
 \* def foo() { let z == y + 1 x := z - 3 await x < 7 }
 foo(_state1) ==
-    LET
-        \* UNION is for flattening the sets produced by nested let expressions
-        _state2 == UNION {
+    UNION {
+        LET
+            z == s.y + 1
+        IN
             LET
-                z == s.y + 1
+                _state3 == { [ss EXCEPT !.x = z - 3 ]: ss \in { s } }
             IN
                 LET
-                    _state3 == { [ss EXCEPT !.x = z - 3 ]: ss \in { s } }
+                    _state4 == { ss \in _state3: ss.x < 7 }
                 IN
-                    LET
-                        _state4 == { ss \in _state3: ss.x < 7 }
-                    IN
-                        _state4
-        : s \in _state1 }
+                    _state4
+    : s \in _state1 }
+
+\* DCal: def f() { var z = 10; x := x + z }
+f(_state1) ==
+    LET _state2 == { [ _name \in DOMAIN s \cup {"z"} |-> IF _name = "z" THEN 10 ELSE s[_name] ] : s \in _state1}
     IN
-        _state2
+        LET _state3 == { [ss EXCEPT !.x = ss.x + ss.z ]: ss \in _state2 }
+        IN _state3
+
+\* DCal: def f() { let z \in set; x := x + z }
+f(_state1) ==
+    UNION { UNION { [ s EXCEPT !.x = s.x + z ] : z \in s.set } : s \in _state1 }
+
+\* DCal: def f() { var z \in {1, 2, 3, 4, 5}; }
+\* translates to DCal: let _anon42 \in {1, 2, 3, 4, 5}; var z = _anon42;
+
+\* DCal: def f() { await x > 4; }
+f(_state1) ==
+    LET _state2 == { s \in _state1 : s.x > 4 }
+    IN _state2
 
 \* DCal: def branch1() { if x <= y then { x := x + 1 } else { y := y - 1 } }
 \* where x, y are state member variables
