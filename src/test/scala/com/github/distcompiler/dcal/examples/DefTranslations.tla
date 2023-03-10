@@ -49,28 +49,28 @@ foo(_state1) ==
                     _state4
     : s \in _state1 }
 
-\* DCal: def f() { var z = 10; x := x + z }
-f(_state1) ==
+\* DCal: def testVar() { var z = 10; x := x + z }
+testVar(_state1) ==
     LET _state2 == { [ _name \in DOMAIN s \cup {"z"} |-> IF _name = "z" THEN 10 ELSE s[_name] ] : s \in _state1}
     IN
         LET _state3 == { [ss EXCEPT !.x = ss.x + ss.z ]: ss \in _state2 }
         IN _state3
 
-\* DCal: def f() { let z \in set; x := x + z }
-f(_state1) ==
+\* DCal: def testLetIn() { let z \in set; x := x + z }
+testLetIn(_state1) ==
     UNION { UNION { [ s EXCEPT !.x = s.x + z ] : z \in s.set } : s \in _state1 }
 
 \* DCal: def f() { var z \in {1, 2, 3, 4, 5}; }
 \* translates to DCal: let _anon42 \in {1, 2, 3, 4, 5}; var z = _anon42;
 
-\* DCal: def f() { await x > 4; }
-f(_state1) ==
+\* DCal: def testWait() { await x > 4; }
+testWait(_state1) ==
     LET _state2 == { s \in _state1 : s.x > 4 }
     IN _state2
 
-\* DCal: def branch1() { if x <= y then { x := x + 1 } else { y := y - 1 } }
+\* DCal: def testIfThenElseNonTail() { if x <= y then { x := x + 1 } else { y := y - 1 }; i := x + y; }
 \* where x, y are state member variables
-branch1(_state1) ==
+testIfThenElseNonTail(_state1) ==
     LET
         _state2 == UNION {
             IF l1.x <= l1.y
@@ -88,10 +88,11 @@ branch1(_state1) ==
                     IN _state6
         : l1 \in _state1 }
     IN
-        _state2
+        LET _state7 == { [l4 EXCEPT !.i = l4.x + l4.y]: l4 \in _state2 }
+        IN _state7
 
-\* DCal: def branch2() { if x <= y then { i := i * x x := x + 1 } else { y := y - 1 } }
-branch2(_state1) ==
+\* DCal: def testIfThenElseTail() { if x <= y then { i := i * x x := x + 1 } else { y := y - 1 } }
+testIfThenElseTail(_state1) ==
     LET
         _state2 == UNION {
             IF s.x <= s.y

@@ -162,7 +162,7 @@ object IRBuilder {
    *          : s \in _state1 }
    */
   // TODO: Remove duplication in then and else
-  def generateIfThenElse(dcalIfThenElse: DCalAST.Statement.IfThenElse, rest: List[DCalAST.Statement])
+  def generateIfThenElse(dcalIfThenElse: DCalAST.Statement.IfThenElse)
                         (using ctx: Context): List[IR.Node]
   = {
     // 1: Returns a MapOnSet on the current state set, wrapped in UNION
@@ -179,7 +179,7 @@ object IRBuilder {
       val thenBlock = IR.Node.Let(
         name = thenState,
         binding = List(IR.Node.Uninterpreted("{ "), IR.Node.Name(ctx.mapOnSetInfo._1), IR.Node.Uninterpreted(" }")),
-        body = generateStatements(dcalIfThenElse.thenBlock.statements ++ rest)(using ctx.withStateName(thenState))
+        body = generateStatements(dcalIfThenElse.thenBlock.statements)(using ctx.withStateName(thenState))
       )
       pb.append(IR.Node.Uninterpreted("THEN "))
       pb.append(thenBlock)
@@ -188,7 +188,7 @@ object IRBuilder {
       val elseBlock = IR.Node.Let(
         name = elseState,
         binding = List(IR.Node.Uninterpreted("{ "), IR.Node.Name(ctx.mapOnSetInfo._1), IR.Node.Uninterpreted(" }")),
-        body = generateStatements(dcalIfThenElse.elseBlock.statements ++ rest)(using ctx.withStateName(elseState))
+        body = generateStatements(dcalIfThenElse.elseBlock.statements)(using ctx.withStateName(elseState))
       )
       pb.append(IR.Node.Uninterpreted("ELSE "))
       pb.append(elseBlock)
@@ -295,8 +295,8 @@ object IRBuilder {
             List(
               IR.Node.Let(
                 name = newState,
-                binding = generateIfThenElse(ifThenElse, ss)(using ctx),
-                body = List(IR.Node.Name(newState))
+                binding = generateIfThenElse(ifThenElse)(using ctx),
+                body = generateStatements(ss)(using ctx.withStateName(newState))
               )
             )
           }
