@@ -65,7 +65,7 @@ testLetIn(_state1) ==
 
 \* DCal: def testWait() { await x > 4; }
 testWait(_state1) ==
-    LET _state2 == { s \in _state1 : s.x > 4 }
+    LET _state2 == { l1 \in _state1: l1.x > 4 }
     IN _state2
 
 \* DCal: def testIfThenElseNonTail() { if x <= y then { x := x + 1 } else { y := y - 1 }; i := x + y; }

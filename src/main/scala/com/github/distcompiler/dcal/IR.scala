@@ -22,18 +22,8 @@ object IR {
     case Name(name: String)
     case Let(name: String, binding: List[Node], body: List[Node])
     case Uninterpreted(text: String)
-
-    // Example:
-    // { x + 1 : x \in foo }
-    //    IR.Node.MapOnSet(
-    //      set = IR.Node.Name("foo"),
-    //      setMember = "x",
-    //      proc = List(
-    //        IR.Node.Name("x"),
-    //        IR.Node.Uninterpreted("+ 1")
-    //      )
-    //    )
     case MapOnSet(set: List[Node], setMember: String, proc: List[IR.Node])
+    case FilterOnSet(set: List[Node], setMember: String, pred: List[IR.Node])
   }
 
   final case class Definition(name: String, params: List[String], body: List[Node])

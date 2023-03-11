@@ -387,11 +387,28 @@ class TestIRBuilder extends AnyFunSuite {
     )
   )
 
-  val testAwait = "def wait() { await x < 0 }"
+  val testAwait = "def wait() { await x > 4 }"
   val expectedAwait = IR.Definition(
     name = "wait",
     params = List("_state1"),
-    body = Nil // Stub
+    body = List(
+      IR.Node.Let(
+        name = "_state2",
+        binding = List(
+          IR.Node.FilterOnSet(
+            set = List(IR.Node.Name("_state1")),
+            setMember = "l1",
+            pred = List(
+              IR.Node.Name("l1"),
+              IR.Node.Uninterpreted(".x"),
+              IR.Node.Uninterpreted(" > "),
+              IR.Node.Uninterpreted("4")
+            )
+          )
+        ),
+        body = List(IR.Node.Name("_state2"))
+      )
+    )
   )
 
   List(
@@ -437,6 +454,9 @@ class TestIRBuilder extends AnyFunSuite {
     TestUtils.sequenceLines(testModule, testLet) -> IR.Module(
       name = moduleName,
       definitions = List(expectedLet)
+    ),
+    TestUtils.sequenceLines(testModule, testAwait) -> IR.Module(
+      name = moduleName, definitions = List(expectedAwait)
     ),
     TestUtils.sequenceLines(testModule, testMultiLineDef) -> IR.Module(
       name = moduleName, definitions = List(expectedMultiLineDef)

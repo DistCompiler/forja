@@ -11,11 +11,11 @@ enum DCalTokenData {
     case If
     case Then
     case Else
-    case EqualTo
     case Walrus
     case DoublePipe
     case Plus
     case Minus
+    case EqualTo
     case NotEqualTo
     case LesserThan
     case GreaterThan
@@ -23,6 +23,7 @@ enum DCalTokenData {
     case GreaterThanOrEqualTo
     case And
     case Or
+    case Not
     case SlashIn
     case Await
     case Def

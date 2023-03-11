@@ -73,7 +73,7 @@ class TestDCalParser extends AnyFunSuite {
               DCalAST.Statement.Var(name = "test2", expressionOpt = None),
               DCalAST.Statement.Var(
                 name = "test3",
-                expressionOpt = Some((DCalAST.BinOp.EqualTo, DCalAST.Expression.StringLiteral("val3")))
+                expressionOpt = Some((DCalAST.RelOp.EqualTo, DCalAST.Expression.StringLiteral("val3")))
               ),
               DCalAST.Statement.Var(
                 name = "test4",
@@ -98,16 +98,16 @@ class TestDCalParser extends AnyFunSuite {
                 )
               ),
               DCalAST.Statement.Await(
-                expression = DCalAST.Expression.ExpressionBinOp(
+                expression = DCalAST.Expression.ExpressionRelOp(
                   lhs = DCalAST.Expression.Name("test6"),
-                  binOp = DCalAST.BinOp.GreaterThan,
+                  relOp = DCalAST.RelOp.GreaterThan,
                   rhs = DCalAST.Expression.IntLiteral(1000)
                 )
               ),
               DCalAST.Statement.IfThenElse(
-                predicate = DCalAST.Expression.ExpressionBinOp(
+                predicate = DCalAST.Expression.ExpressionRelOp(
                   lhs = DCalAST.Expression.Name("x"),
-                  binOp = DCalAST.BinOp.LesserThanOrEqualTo,
+                  relOp = DCalAST.RelOp.LesserThanOrEqualTo,
                   rhs = DCalAST.Expression.Name("y")
                 ),
                 thenBlock = DCalAST.Block(

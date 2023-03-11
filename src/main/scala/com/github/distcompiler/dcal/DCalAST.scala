@@ -12,21 +12,26 @@ object DCalAST {
   block ::= `{` <statement>* `}
 
   statement ::=
-    | `await` <expression>
+    | `await` <predicate>
     | <assign_pair> (`||` <assign_pair>)*
     | `let` <name> `=` <expression>
     | `var` <name> ((`=` | `\in`) <expression>)?
-    | `if` <expression> `then` <block> (`else` <expression>)?
+    | `if` <predicate> `then` <block> (`else` <expression>)?
 
   // e.g `x := y || y := x` swaps x and y
   assign_pair ::= <name> `:=` <expression>
 
-  expression ::= <expression_binop>
+  expression ::= <expression_binop> | <predicate>
 
   expression_binop ::= <expression_base> (<binop> <expression_base>)?
 
+  predicate ::= `TRUE` | `FALSE` | <expression_relop> | <expression_logicop>
+
+  expression_relop ::= <expression_base> <relop> <expression_base>
+
+  expression_logicop ::= <predicate> <logicop> <predicate>
+
   expression_base ::=
-      | <boolean>
       | <int_literal>
       | <string_literal>
       | <name>
@@ -35,11 +40,10 @@ object DCalAST {
 
   set ::= `{{` <expression>* `}}`
 
-  boolean ::=
-      | TRUE
-      | FALSE
 
-  binop ::= `+` | `-` | `=` | `#` | `<` | `>` | `<=` | `>=` | `\/` | `/\`
+  binop ::= `+` | `-`
+  relop ::= `=` | `#` | `<` | `>` | `<=` | `>=`
+  logicop ::= `\/` | `/\` | `~`
   */
 
   final case class Module(name: String, imports: List[String], definitions: List[Definition])
@@ -50,14 +54,16 @@ object DCalAST {
     case Await(expression: Expression)
     case AssignPairs(assignPairs: List[AssignPair])
     case Let(name: String, expression: Expression)
-    case Var(name: String, expressionOpt: Option[(BinOp, Expression)])
+    case Var(name: String, expressionOpt: Option[(BinOp | RelOp, Expression)])
     case IfThenElse(predicate: Expression, thenBlock: Block, elseBlock: Block)
   }
 
   final case class AssignPair(name: String, expression: Expression)
 
   enum Expression {
-    case ExpressionBinOp(lhs: Expression, binOp: DCalAST.BinOp, rhs: Expression)
+    case ExpressionBinOp(lhs: Expression, binOp: BinOp, rhs: Expression)
+    case ExpressionRelOp(lhs: Expression, relOp: RelOp, rhs: Expression)
+    case ExpressionLogicOp(lhs: Expression, logicOp: LogicOp, rhs: Expression)
     case True
     case False
     case IntLiteral(value: BigInt)
@@ -68,16 +74,23 @@ object DCalAST {
   }
 
   enum BinOp {
-    case EqualTo
     case SlashIn
     case Plus
     case Minus
+  }
+
+  enum RelOp {
+    case EqualTo
     case NotEqualTo
     case LesserThan
     case GreaterThan
     case LesserThanOrEqualTo
     case GreaterThanOrEqualTo
+  }
+
+  enum LogicOp {
     case And
     case Or
+    case Not
   }
 }
