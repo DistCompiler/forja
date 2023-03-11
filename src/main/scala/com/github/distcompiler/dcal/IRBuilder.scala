@@ -54,7 +54,6 @@ object IRBuilder {
     dcalBinOp match {
       case DCalAST.BinOp.Plus => IR.Node.Uninterpreted(" + ")
       case DCalAST.BinOp.Minus => IR.Node.Uninterpreted(" - ")
-      case _ => ???
     }
   }
 
@@ -92,6 +91,8 @@ object IRBuilder {
 
       case BracketedExpression(expr) =>
         List(IR.Node.Uninterpreted("(")) ++ generateExpression(expr) ++ List(IR.Node.Uninterpreted(")"))
+
+      case _ => ???
     }
   }
 
@@ -266,16 +267,38 @@ object IRBuilder {
     )
   }
 
-
-  /**
-   * Maps the DCal statement to the current state set, producing a new state set
-   */
-  def generateStatement(dcalStmt: DCalAST.Statement)
-                       (using ctx: Context): List[IR.Node] = {
-    dcalStmt match {
-      case Await(expr) => List(IR.Node.Uninterpreted("await")) ++ generateExpression(expr)
-      case Var(name: String, optExpression: Option[(DCalAST.BinOp, DCalAST.Expression)]) => ???
+  def generateVar(dcalVar: DCalAST.Statement.Var)(using ctx: Context): List[IR.Node] = {
+    dcalVar.expressionOpt.get._1 match {
+      case DCalAST.AssignmentOp.EqualTo =>
+        val setMember = freshLocal
+        val setKey = freshLocal
+        List(
+          IR.Node.MapOnSet(
+            set = List(IR.Node.Name(ctx.stateName)),
+            setMember = setMember,
+            proc = List(
+              IR.Node.Uninterpreted("["),
+              IR.Node.Uninterpreted(setKey),
+              IR.Node.Uninterpreted(" \\in DOMAIN "),
+              IR.Node.Name(setMember),
+              IR.Node.Uninterpreted(s"""\\cup { "${dcalVar.name}" } |-> IF """),
+              IR.Node.Uninterpreted(setKey),
+              // TODO: Throw error if expressionOpt matches None
+              IR.Node.Uninterpreted(s""" = "${dcalVar.name}" THEN """)
+            ) ++
+              generateExpression(dcalVar.expressionOpt.get._2) ++
+              List(
+                IR.Node.Uninterpreted(" ELSE "),
+                IR.Node.Name(setMember),
+                IR.Node.Uninterpreted("["),
+                IR.Node.Uninterpreted(setKey),
+                IR.Node.Uninterpreted("]]")
+              )
+          )
+        )
+      case DCalAST.AssignmentOp.SlashIn => ???
     }
+
   }
 
   /**
@@ -309,10 +332,10 @@ object IRBuilder {
               IR.Node.Let(
                 name = newCtx.stateName,
                 binding = generateAssignPairs(assignPairs),
-                body = generateStatements(dcalStmts = ss)(using newCtx)
+                body = generateStatements(ss)(using newCtx)
               )
             )
-          case let @ Let(_, _) => {
+          case let @ Let(_, _) =>
             val newState = freshState
             List(
               IR.Node.Let(
@@ -321,8 +344,16 @@ object IRBuilder {
                 body = List(IR.Node.Name(newState))
               )
             )
-          }
-          case ifThenElse @ IfThenElse(_, _, _) => {
+          case `var` @ Var(name, _) =>
+            val newState = freshState
+            List(
+              IR.Node.Let(
+                name = newState,
+                binding = generateVar(`var`),
+                body = generateStatements(ss)(using ctx.withNameInfo(name, NameInfo.State).withStateName(newState))
+              )
+            )
+          case ifThenElse @ IfThenElse(_, _, _) =>
             val newState = freshState
             List(
               IR.Node.Let(
@@ -331,8 +362,6 @@ object IRBuilder {
                 body = generateStatements(ss)(using ctx.withStateName(newState))
               )
             )
-          }
-          case _ => ???
         }
     }
   }

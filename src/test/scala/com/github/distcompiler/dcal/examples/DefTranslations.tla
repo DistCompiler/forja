@@ -51,9 +51,9 @@ foo(_state1) ==
 
 \* DCal: def testVar() { var z = 10; x := x + z; }
 testVar(_state1) ==
-    LET _state2 == { [ _name \in DOMAIN s \cup {"z"} |-> IF _name = "z" THEN 10 ELSE s[_name] ] : s \in _state1}
+    LET _state2 == { [_name \in DOMAIN l1 \cup {"z"} |-> IF _name = "z" THEN 10 ELSE l1[_name]] : l1 \in _state1 }
     IN
-        LET _state3 == { [ss EXCEPT !.x = ss.x + ss.z ]: ss \in _state2 }
+        LET _state3 == { [l2 EXCEPT !.x = l2.x + l2.z ]: l2 \in _state2 }
         IN _state3
 
 \* DCal: def testLetIn() { let z \in set; x := x + z; }

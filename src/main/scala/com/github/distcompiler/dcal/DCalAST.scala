@@ -54,7 +54,7 @@ object DCalAST {
     case Await(expression: Expression)
     case AssignPairs(assignPairs: List[AssignPair])
     case Let(name: String, expression: Expression)
-    case Var(name: String, expressionOpt: Option[(BinOp | RelOp, Expression)])
+    case Var(name: String, expressionOpt: Option[(AssignmentOp, Expression)])
     case IfThenElse(predicate: Expression, thenBlock: Block, elseBlock: Block)
   }
 
@@ -73,8 +73,12 @@ object DCalAST {
     case BracketedExpression(expression: Expression)
   }
 
-  enum BinOp {
+  enum AssignmentOp {
+    case EqualTo
     case SlashIn
+  }
+
+  enum BinOp {
     case Plus
     case Minus
   }

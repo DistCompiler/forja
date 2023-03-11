@@ -104,9 +104,9 @@ object DCalParser {
         case name ~ _ ~ expr => DCalAST.Statement.Let(name = name, expression = expr)
       }
 
-      val op: Parser[DCalAST.BinOp | DCalAST.RelOp] = acceptMatch("var operator", {
-        case DCalTokenData.EqualTo => DCalAST.RelOp.EqualTo // TODO: Switch from RelOp
-        case DCalTokenData.SlashIn => DCalAST.BinOp.SlashIn
+      val op: Parser[DCalAST.AssignmentOp] = acceptMatch("var operator", {
+        case DCalTokenData.EqualTo => DCalAST.AssignmentOp.EqualTo
+        case DCalTokenData.SlashIn => DCalAST.AssignmentOp.SlashIn
       })
 
       val `var` =

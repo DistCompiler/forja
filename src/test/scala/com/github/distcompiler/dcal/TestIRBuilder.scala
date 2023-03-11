@@ -17,7 +17,7 @@ class TestIRBuilder extends AnyFunSuite {
     )
   )
 
-  val testStateAssignPairs = """def resetString() { str := "new string" }"""
+  val testStateAssignPairs = """def resetString() { str := "new string"; }"""
   // Expected TLA+:
   //  resetString(_state1) ==
   //    LET
@@ -51,7 +51,7 @@ class TestIRBuilder extends AnyFunSuite {
     )
   )
 
-  val testLongAssignPairs = "def baz() { y := y - 1 || x := x + 1 }"
+  val testLongAssignPairs = "def baz() { y := y - 1 || x := x + 1; }"
   val expectedLongAssignPairs = IR.Definition(
     name = "baz",
     params = List("_state1"),
@@ -86,7 +86,7 @@ class TestIRBuilder extends AnyFunSuite {
     )
   )
 
-  val testLet = "def sum(p1, p2) { let local = p1 + p2 x := local }"
+  val testLet = "def sum(p1, p2) { let local = p1 + p2; x := local; }"
   val expectedLet = IR.Definition(
     name = "sum",
     params = List("_state1", "p1", "p2"),
@@ -144,7 +144,7 @@ class TestIRBuilder extends AnyFunSuite {
     )
   )
 
-  val testDefParam = "def bar(v) { y := y - v i := i + 1 }"
+  val testDefParam = "def bar(v) { y := y - v; i := i + 1; }"
   // Expected TLA+:
   //  change(_state1, v) ==
   //    LET
@@ -208,7 +208,7 @@ class TestIRBuilder extends AnyFunSuite {
     )
   )
 
-  val testMultiLineDef = "def bar() { y := y - 1 x := x + 1 }"
+  val testMultiLineDef = "def bar() { y := y - 1; x := x + 1; }"
   val expectedMultiLineDef = IR.Definition(
     name = "bar",
     params = List("_state1"),
@@ -263,14 +263,64 @@ class TestIRBuilder extends AnyFunSuite {
     )
   )
 
-  val testVar = "def makeVar() { var v = x }"
+  val testVar = "def testVar() { var z = 10; x := x + z; }"
   val expectedVar = IR.Definition(
-    name = "makeVar",
+    name = "testVar",
     params = List("_state1"),
-    body = Nil // Stub
+    body = List(
+      IR.Node.Let(
+        name = "_state2",
+        binding = List(
+          IR.Node.MapOnSet(
+            set = List(IR.Node.Name("_state1")),
+            setMember = "l1",
+            proc = List(
+              IR.Node.Uninterpreted("["),
+              IR.Node.Uninterpreted("l2"), // TODO: Ask if this should be name or uninterpreted
+              IR.Node.Uninterpreted(" \\in DOMAIN "),
+              IR.Node.Name("l1"),
+              IR.Node.Uninterpreted("""\cup { "z" } |-> IF """),
+              // Because only from "|->" onwards is l2 defined
+              IR.Node.Uninterpreted("l2"),
+              IR.Node.Uninterpreted(""" = "z" THEN """),
+              IR.Node.Uninterpreted("10"),
+              IR.Node.Uninterpreted(" ELSE "),
+              IR.Node.Name("l1"),
+              IR.Node.Uninterpreted("["),
+              IR.Node.Uninterpreted("l2"),
+              IR.Node.Uninterpreted("]]")
+            )
+          )
+        ),
+        body = List(
+          IR.Node.Let(
+            name = "_state3",
+            binding = List(
+              IR.Node.MapOnSet(
+                set = List(IR.Node.Name("_state2")),
+                setMember = "l3",
+                proc = List(
+                  IR.Node.Uninterpreted("["),
+                  IR.Node.Name("l3"),
+                  IR.Node.Uninterpreted(" EXCEPT "),
+                  IR.Node.Uninterpreted("!.x = "),
+                  IR.Node.Name("l3"),
+                  IR.Node.Uninterpreted(".x"),
+                  IR.Node.Uninterpreted(" + "),
+                  IR.Node.Name("l3"),
+                  IR.Node.Uninterpreted(".z"),
+                  IR.Node.Uninterpreted("]"),
+                )
+              )
+            ),
+            body = List(IR.Node.Name("_state3"))
+          )
+        )
+      )
+    )
   )
 
-  val testIfThenElse = "def branch() { if x <= y then { x := x + 1 } else { y := y - 1 } i := x + y }"
+  val testIfThenElse = "def branch() { if x <= y then { x := x + 1; } else { y := y - 1; } i := x + y; }"
   val expectedIfThenElse = IR.Definition(
     name = "branch",
     params = List("_state1"),
@@ -387,7 +437,7 @@ class TestIRBuilder extends AnyFunSuite {
     )
   )
 
-  val testAwait = "def wait() { await x > 4 }"
+  val testAwait = "def wait() { await x > 4; }"
   val expectedAwait = IR.Definition(
     name = "wait",
     params = List("_state1"),
@@ -457,6 +507,9 @@ class TestIRBuilder extends AnyFunSuite {
     ),
     TestUtils.sequenceLines(testModule, testAwait) -> IR.Module(
       name = moduleName, definitions = List(expectedAwait)
+    ),
+    TestUtils.sequenceLines(testModule, testVar) -> IR.Module(
+      name = moduleName, definitions = List(expectedVar)
     ),
     TestUtils.sequenceLines(testModule, testMultiLineDef) -> IR.Module(
       name = moduleName, definitions = List(expectedMultiLineDef)

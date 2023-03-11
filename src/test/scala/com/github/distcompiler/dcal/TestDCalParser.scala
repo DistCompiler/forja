@@ -73,13 +73,13 @@ class TestDCalParser extends AnyFunSuite {
               DCalAST.Statement.Var(name = "test2", expressionOpt = None),
               DCalAST.Statement.Var(
                 name = "test3",
-                expressionOpt = Some((DCalAST.RelOp.EqualTo, DCalAST.Expression.StringLiteral("val3")))
+                expressionOpt = Some((DCalAST.AssignmentOp.EqualTo, DCalAST.Expression.StringLiteral("val3")))
               ),
               DCalAST.Statement.Var(
                 name = "test4",
                 expressionOpt = Some(
                   (
-                    DCalAST.BinOp.SlashIn,
+                    DCalAST.AssignmentOp.SlashIn,
                     DCalAST.Expression.Set(
                       members = List(
                         DCalAST.Expression.IntLiteral(1),
