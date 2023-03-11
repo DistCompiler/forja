@@ -80,10 +80,6 @@ object DCalParser {
         }
     }
 
-    lazy val assignPair: Parser[DCalAST.AssignPair] = (name ~ elem(DCalTokenData.Walrus) ~ expression).map {
-      case name ~ _ ~ expr => DCalAST.AssignPair(name = name, expression = expr)
-    }
-
     lazy val statement: Parser[DCalAST.Statement] = {
       // TODO: Debug why expression does not work in predicate position
       val await = (elem(DCalTokenData.Await) ~> predicate).map(expr => DCalAST.Statement.Await(expr))
@@ -93,6 +89,10 @@ object DCalParser {
         case predicate ~ _ ~ thenBlock ~ _ ~ elseBlock => DCalAST.Statement.IfThenElse(
           predicate = predicate, thenBlock = thenBlock, elseBlock = elseBlock
         )
+      }
+
+      val assignPair: Parser[DCalAST.AssignPair] = (name ~ elem(DCalTokenData.Walrus) ~ expression).map {
+        case name ~ _ ~ expr => DCalAST.AssignPair(name = name, expression = expr)
       }
 
       val assignPairs =
@@ -115,7 +115,7 @@ object DCalParser {
           case name ~ None => DCalAST.Statement.Var(name = name, expressionOpt = None)
         }
 
-      await | ifThenElse | let | `var` | assignPairs
+      ((await | let | `var` | assignPairs) <~ elem(DCalTokenData.Semicolon)) | ifThenElse
     }
 
     // TODO: Operator precedence behaviour needs reworking
@@ -166,8 +166,8 @@ object DCalParser {
 
       val bracketedExpr = (elem(DCalTokenData.OpenParenthesis) ~> expression <~ elem(DCalTokenData.CloseParenthesis)).map { expr => expr }
 
-      val set = (elem(DCalTokenData.OpenCurlyBracket) ~> elem(DCalTokenData.OpenCurlyBracket) ~> opt(delimited(expression)) <~
-        elem(DCalTokenData.CloseCurlyBracket) <~ elem(DCalTokenData.CloseCurlyBracket)).map { setMembers =>
+      val set = (elem(DCalTokenData.OpenCurlyBracket) ~> opt(delimited(expression)) <~
+        elem(DCalTokenData.CloseCurlyBracket)).map { setMembers =>
         DCalAST.Expression.Set(members = setMembers.getOrElse(Nil))
       }
 

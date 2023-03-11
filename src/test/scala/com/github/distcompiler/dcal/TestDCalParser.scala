@@ -27,15 +27,15 @@ class TestDCalParser extends AnyFunSuite {
     body = DCalAST.Block(statements = Nil)
   )
 
-  val testLet = "let test1 = TRUE"
-  val testVar = "var test2"
-  val testVarEquals = """var test3 = "val3""""
-  val testVarSlashIn = "var test4 \\in {{ 1, 2, 3, 4, 5 }}"
-  val testIf = "if x <= y then { x := x + 1 } else { y := y - 1 }"
+  val testLet = "let test1 = TRUE;"
+  val testVar = "var test2;"
+  val testVarEquals = """var test3 = "val3";"""
+  val testVarSlashIn = "var test4 \\in { 1, 2, 3, 4, 5 };"
+  val testIf = "if x <= y then { x := x + 1; } else { y := y - 1; }"
   val testBracketedExpression = "(test6)"
-  val testAssignPairs = s"test6 := test7 || test7 := $testBracketedExpression"
+  val testAssignPairs = s"test6 := test7 || test7 := $testBracketedExpression;"
   val testExpression = "test6 > 1000"
-  val testAwait = s"await $testExpression"
+  val testAwait = s"await $testExpression;"
   val testDefParamsBody = s"def aFunc(anArg) {\n${
     TestUtils.sequenceLines(
       testLet, testVar, testVarEquals, testVarSlashIn, testAssignPairs, testAwait, testIf

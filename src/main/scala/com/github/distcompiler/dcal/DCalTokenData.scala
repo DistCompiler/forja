@@ -34,4 +34,5 @@ enum DCalTokenData {
     case OpenParenthesis
     case CloseParenthesis
     case Comma
+    case Semicolon
 }

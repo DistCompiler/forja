@@ -5,21 +5,21 @@ EXTENDS Integers, FiniteSets
 mt(_state1) ==
     _state1
 
-\* DCal: def resetString() { str := "new string" }
+\* DCal: def resetString() { str := "new string"; }
 resetString(_state1) ==
     LET
         _state2 == { [s EXCEPT !.str = "new string"]: s \in _state1 }
     IN
         _state2
 
-\* DCal: def baz() { y := y - 1 || x := x + 1 }
+\* DCal: def baz() { y := y - 1 || x := x + 1; }
 baz(_state1) ==
     LET
         _state2 == { [s EXCEPT !.y = s.y - 1, !.x = s.x + 1]: s \in _state1 }
     IN
         _state2
 
-\* DCal: def sum(p1, p2) { let local = p1 + p2 x := local }
+\* DCal: def sum(p1, p2) { let local = p1 + p2; x := local }
 sum(_state1, p1, p2) ==
     LET
         _state2 == UNION {
@@ -34,7 +34,7 @@ sum(_state1, p1, p2) ==
     IN
         _state2
 
-\* def foo() { let z == y + 1 x := z - 3 await x < 7 }
+\* def foo() { let z == y + 1; x := z - 3; await x < 7 }
 foo(_state1) ==
     UNION {
         LET
@@ -49,14 +49,14 @@ foo(_state1) ==
                     _state4
     : s \in _state1 }
 
-\* DCal: def testVar() { var z = 10; x := x + z }
+\* DCal: def testVar() { var z = 10; x := x + z; }
 testVar(_state1) ==
     LET _state2 == { [ _name \in DOMAIN s \cup {"z"} |-> IF _name = "z" THEN 10 ELSE s[_name] ] : s \in _state1}
     IN
         LET _state3 == { [ss EXCEPT !.x = ss.x + ss.z ]: ss \in _state2 }
         IN _state3
 
-\* DCal: def testLetIn() { let z \in set; x := x + z }
+\* DCal: def testLetIn() { let z \in set; x := x + z; }
 testLetIn(_state1) ==
     UNION { UNION { [ s EXCEPT !.x = s.x + z ] : z \in s.set } : s \in _state1 }
 
@@ -68,7 +68,7 @@ testWait(_state1) ==
     LET _state2 == { l1 \in _state1: l1.x > 4 }
     IN _state2
 
-\* DCal: def testIfThenElseNonTail() { if x <= y then { x := x + 1 } else { y := y - 1 }; i := x + y; }
+\* DCal: def testIfThenElseNonTail() { if x <= y then { x := x + 1; } else { y := y - 1; } i := x + y; }
 \* where x, y are state member variables
 testIfThenElseNonTail(_state1) ==
     LET
@@ -91,7 +91,7 @@ testIfThenElseNonTail(_state1) ==
         LET _state7 == { [l4 EXCEPT !.i = l4.x + l4.y]: l4 \in _state2 }
         IN _state7
 
-\* DCal: def testIfThenElseTail() { if x <= y then { i := i * x x := x + 1 } else { y := y - 1 } }
+\* DCal: def testIfThenElseTail() { if x <= y then { i := i * x; x := x + 1; } else { y := y - 1; } }
 testIfThenElseTail(_state1) ==
     LET
         _state2 == UNION {
@@ -108,7 +108,7 @@ testIfThenElseTail(_state1) ==
     IN
         _state2
 
-\* DCal: def branchOnLocal() { let b = TRUE if b then { x := x + 1 } else { y := y - 1 } }
+\* DCal: def branchOnLocal() { let b = TRUE; if b then { x := x + 1; } else { y := y - 1; } }
 \* where b is a local
 branchOnLocal(_state1) ==
     LET
@@ -128,7 +128,7 @@ branchOnLocal(_state1) ==
     IN
         _state2
 
-\* DCal: def bar(v) { y := y - v i := i + 1 }
+\* DCal: def bar(v) { y := y - v; i := i + 1; }
 bar(_state1, v) ==
     LET
         _state2 == { [s EXCEPT !.y = s.y - v ]: s \in _state1 }

@@ -123,6 +123,7 @@ object DCalTokenizer {
         "(" -> DCalTokenData.OpenParenthesis,
         ")" -> DCalTokenData.CloseParenthesis,
         "," -> DCalTokenData.Comma,
+        ";" -> DCalTokenData.Semicolon,
         "+" -> DCalTokenData.Plus,
         "-" -> DCalTokenData.Minus,
         "=" -> DCalTokenData.EqualTo,
