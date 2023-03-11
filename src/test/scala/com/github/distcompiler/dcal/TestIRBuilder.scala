@@ -164,13 +164,13 @@ class TestIRBuilder extends AnyFunSuite {
         binding = List(
           IR.Node.MapOnSet(
             set = List( IR.Node.Name("_state1") ),
-            setMember = "s",
+            setMember = "l1",
             proc = List(
               IR.Node.Uninterpreted("["),
-              IR.Node.Name("s"),
+              IR.Node.Name("l1"),
               IR.Node.Uninterpreted(" EXCEPT "),
               IR.Node.Uninterpreted("!.y = "),
-              IR.Node.Name("s"),
+              IR.Node.Name("l1"),
               IR.Node.Uninterpreted(".y"),
               IR.Node.Uninterpreted(" - "),
               IR.Node.Name("v"),
@@ -185,13 +185,13 @@ class TestIRBuilder extends AnyFunSuite {
             binding = List(
               IR.Node.MapOnSet(
                 set = List( IR.Node.Name("_state2") ),
-                setMember = "s",
+                setMember = "l2",
                 proc = List(
                   IR.Node.Uninterpreted("["),
-                  IR.Node.Name("s"),
+                  IR.Node.Name("l2"),
                   IR.Node.Uninterpreted(" EXCEPT "),
                   IR.Node.Uninterpreted("!.i = "),
-                  IR.Node.Name("s"),
+                  IR.Node.Name("l2"),
                   IR.Node.Uninterpreted(".i"),
                   IR.Node.Uninterpreted(" + "),
                   IR.Node.Uninterpreted("1"),
@@ -462,9 +462,6 @@ class TestIRBuilder extends AnyFunSuite {
   )
 
   List(
-    TestUtils.sequenceLines(testModule, testDefParam) -> IR.Module(
-      name = moduleName, definitions = List(expectedDefParam)
-    ),
     TestUtils.sequenceLines(
       testModule, testStateAssignPairs, testDefParam, testDefNoParamsNoBody
     ) -> IR.Module(
@@ -492,6 +489,9 @@ class TestIRBuilder extends AnyFunSuite {
         expectedDefNoParamsNoBody
       )
     ),
+    TestUtils.sequenceLines(testModule, testDefParam) -> IR.Module(
+      name = moduleName, definitions = List(expectedDefParam)
+    ),
     TestUtils.sequenceLines(testModule, testStateAssignPairs) -> IR.Module(
       name = moduleName, definitions = List(expectedStateAssignPairs)
     ),
@@ -513,15 +513,32 @@ class TestIRBuilder extends AnyFunSuite {
     ),
     TestUtils.sequenceLines(testModule, testMultiLineDef) -> IR.Module(
       name = moduleName, definitions = List(expectedMultiLineDef)
-    )
+    ),
+    TestUtils.sequenceLines(testModule, "def f1() {}", "def f2() {}", "def f3() {}") -> IR.Module(
+      name = moduleName,
+      definitions = List(
+        IR.Definition(name = "f1", params = List("_state1"), body = List(IR.Node.Name("_state1"))),
+        IR.Definition(name = "f2", params = List("_state1"), body = List(IR.Node.Name("_state1"))),
+        IR.Definition(name = "f3", params = List("_state1"), body = List(IR.Node.Name("_state1")))
+      )
+    ),
   ).foreach {
     case (input, expectedOutput) =>
-      test(s"generateIR($input)") {
+      test(s"buildIR($input)") {
         val actualOutput = IRBuilder(
           contents = input,
           fileName = "<testfile>",
         )
         assert(actualOutput == expectedOutput)
       }
+  }
+
+  test("Tests that params of one def does not leak to another def") {
+    val input = TestUtils.sequenceLines(testModule, "def f1(v) {}", "def f2() { x := x + v; }")
+    assertThrows[NoSuchElementException](
+      IRBuilder(
+        contents = input, fileName = "<testfile>"
+      )
+    )
   }
 }
