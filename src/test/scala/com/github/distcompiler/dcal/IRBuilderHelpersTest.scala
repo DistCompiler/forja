@@ -2,7 +2,7 @@ package com.github.distcompiler.dcal
 
 import org.scalatest.funsuite.AnyFunSuite
 
-class TestIRBuilderHelpers extends AnyFunSuite {
+class IRBuilderHelpersTest extends AnyFunSuite {
   final case class GenerateAssignPairsTest(ctx: IRBuilder.Context,
                                            input: DCalAST.Statement.AssignPairs,
                                            expectedOutput: List[IR.Node])

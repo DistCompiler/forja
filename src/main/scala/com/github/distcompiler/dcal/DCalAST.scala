@@ -16,7 +16,7 @@ object DCalAST {
     | <assign_pair> (`||` <assign_pair>)*
     | `let` <name> (`=` | `\in`) <expression>
     | `var` <name> ((`=` | `\in`) <expression>)?
-    | `if` <predicate> `then` <block> (`else` <expression>)?
+    | `if` <predicate> `then` <block> (`else` <block>)
 
   // e.g `x := y || y := x` swaps x and y
   assign_pair ::= <name> `:=` <expression>
@@ -38,7 +38,7 @@ object DCalAST {
       | <set>
       | `(` <expression> `)`
 
-  set ::= `{{` <expression>* `}}`
+  set ::= `{` <expression>* `}`
 
 
   binop ::= `+` | `-`
@@ -61,15 +61,15 @@ object DCalAST {
   final case class AssignPair(name: String, expression: Expression)
 
   enum Expression {
-    case ExpressionBinOp(lhs: Expression, binOp: BinOp, rhs: Expression)
-    case ExpressionRelOp(lhs: Expression, relOp: RelOp, rhs: Expression)
-    case ExpressionLogicOp(lhs: Expression, logicOp: LogicOp, rhs: Expression)
     case True
     case False
     case IntLiteral(value: BigInt)
     case StringLiteral(value: String)
     case Name(name: String)
     case Set(members: List[Expression])
+    case ExpressionBinOp(lhs: Expression, binOp: BinOp, rhs: Expression)
+    case ExpressionRelOp(lhs: Expression, relOp: RelOp, rhs: Expression)
+    case ExpressionLogicOp(lhs: Expression, logicOp: LogicOp, rhs: Expression)
     case BracketedExpression(expression: Expression)
   }
 

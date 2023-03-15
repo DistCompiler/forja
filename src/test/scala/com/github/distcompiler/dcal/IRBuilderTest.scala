@@ -2,13 +2,13 @@ package com.github.distcompiler.dcal
 
 import org.scalatest.funsuite.AnyFunSuite
 
-class TestIRBuilder extends AnyFunSuite {
+class IRBuilderTest extends AnyFunSuite {
   import IRBuilder.*
 
   val moduleName = "TestModule"
   val testModule = s"module $moduleName"
 
-  val testDefNoParamsNoBody = "def mt() {}"
+  val testDefNoParamNoBody = "def mt() {}"
   val expectedDefNoParamsNoBody = IR.Definition(
     name = "mt",
     params = List("_state1"),
@@ -17,13 +17,84 @@ class TestIRBuilder extends AnyFunSuite {
     )
   )
 
+  val testParams = "def bar(v) { y := y - v; i := i + 1; }"
+  val expectedParams = IR.Definition(
+    name = "bar",
+    params = List("_state1", "v"),
+    body = List(
+      IR.Node.Let(
+        name = "_state2",
+        binding = List(
+          IR.Node.MapOnSet(
+            set = List(IR.Node.Name("_state1")),
+            setMember = "l1",
+            proc = List(
+              IR.Node.Uninterpreted("["),
+              IR.Node.Name("l1"),
+              IR.Node.Uninterpreted(" EXCEPT "),
+              IR.Node.Uninterpreted("!.y = "),
+              IR.Node.Name("l1"),
+              IR.Node.Uninterpreted(".y"),
+              IR.Node.Uninterpreted(" - "),
+              IR.Node.Name("v"),
+              IR.Node.Uninterpreted("]")
+            )
+          )
+        ),
+        body = List(
+          IR.Node.Let(
+            name = "_state3",
+            binding = List(
+              IR.Node.MapOnSet(
+                set = List(IR.Node.Name("_state2")),
+                setMember = "l2",
+                proc = List(
+                  IR.Node.Uninterpreted("["),
+                  IR.Node.Name("l2"),
+                  IR.Node.Uninterpreted(" EXCEPT "),
+                  IR.Node.Uninterpreted("!.i = "),
+                  IR.Node.Name("l2"),
+                  IR.Node.Uninterpreted(".i"),
+                  IR.Node.Uninterpreted(" + "),
+                  IR.Node.Uninterpreted("1"),
+                  IR.Node.Uninterpreted("]")
+                )
+              )
+            ),
+            body = List(
+              IR.Node.Name("_state3")
+            )
+          )
+        )
+      )
+    )
+  )
+
+  val testAwait = "def wait() { await x > 4; }"
+  val expectedAwait = IR.Definition(
+    name = "wait",
+    params = List("_state1"),
+    body = List(
+      IR.Node.Let(
+        name = "_state2",
+        binding = List(
+          IR.Node.FilterOnSet(
+            set = List(IR.Node.Name("_state1")),
+            setMember = "l1",
+            pred = List(
+              IR.Node.Name("l1"),
+              IR.Node.Uninterpreted(".x"),
+              IR.Node.Uninterpreted(" > "),
+              IR.Node.Uninterpreted("4")
+            )
+          )
+        ),
+        body = List(IR.Node.Name("_state2"))
+      )
+    )
+  )
+
   val testStateAssignPairs = """def resetString() { str := "new string"; }"""
-  // Expected TLA+:
-  //  resetString(_state1) ==
-  //    LET
-  //      _state2 == { [s EXCEPT !.str = "new string"]: s \in _state1 }
-  //    IN
-  //      _state2
   val expectedStateAssignPairs = IR.Definition(
     name = "resetString",
     params = List("_state1"),
@@ -106,11 +177,14 @@ class TestIRBuilder extends AnyFunSuite {
                   IR.Node.Uninterpreted(" + "),
                   IR.Node.Name("p2")
                 ),
-                // { [ss EXCEPT !.x = local] : ss \in { s } }
                 body = List(
                   IR.Node.Let(
                     name = "_state3",
-                    binding = List(IR.Node.Uninterpreted("{ "), IR.Node.Name("l1"), IR.Node.Uninterpreted(" }")),
+                    binding = List(
+                      IR.Node.Uninterpreted("{ "),
+                      IR.Node.Name("l1"),
+                      IR.Node.Uninterpreted(" }")
+                    ),
                     body = List(
                       IR.Node.Let(
                         name = "_state4",
@@ -145,20 +219,6 @@ class TestIRBuilder extends AnyFunSuite {
   )
 
   val testLetIn = """def testLetIn() { let z \in set; x := x + z; await x > 10; }"""
-  // testLetIn2(_state1) ==
-  //    UNION (MapOnSet #1){
-  //        UNION (MapOnSet #2){
-  //            (proc == LET ... IN ...)
-  //            LET _state2 == { l1 }
-  //            IN
-  //                LET _state3 == { [ l2 EXCEPT !.x = l2.x + z ]: l2 \in _state2 }
-  //                IN
-  //                    LET _state4 == { l3 \in _state3 : l3.x > 10 }
-  //                    IN _state4
-  //            : z \in l1.set
-  //        }
-  //        : l1 \in _state1
-  //    }
   val expectedLetIn = IR.Definition(
     name = "testLetIn",
     params = List("_state1"),
@@ -186,7 +246,6 @@ class TestIRBuilder extends AnyFunSuite {
                     body = List(
                       IR.Node.Let(
                         name = "_state4",
-                        // { [ l2 EXCEPT !.x = l2.x + z ]: l2 \in _state2 }
                         binding = List(
                           IR.Node.MapOnSet(
                             set = List(IR.Node.Name("_state3")),
@@ -207,7 +266,6 @@ class TestIRBuilder extends AnyFunSuite {
                         body = List(
                           IR.Node.Let(
                             name = "_state5",
-                            // { l3 \in _state3 : l3.x > 10 }
                             binding = List(
                               IR.Node.FilterOnSet(
                                 set = List(IR.Node.Name("_state4")),
@@ -232,124 +290,6 @@ class TestIRBuilder extends AnyFunSuite {
           )
         ),
         body = List(IR.Node.Name("_state2"))
-      )
-    )
-  )
-
-  val testDefParam = "def bar(v) { y := y - v; i := i + 1; }"
-  //  change(_state1, v) ==
-  //    LET
-  //      _state2 == { [s EXCEPT !.y = s.y - v]: s \ in _state1 }
-  //    IN
-  //      LET
-  //        _state3 == { [s EXCEPT !.i = s.i + 1]: s \ in _state2 }
-  //      IN
-  //        _state3
-  val expectedDefParam = IR.Definition(
-    name = "bar",
-    params = List("_state1", "v"),
-    body = List(
-      IR.Node.Let(
-        name = "_state2",
-        // { [s EXCEPT !.y = s.y - v]: s \in _state1 }
-        binding = List(
-          IR.Node.MapOnSet(
-            set = List( IR.Node.Name("_state1") ),
-            setMember = "l1",
-            proc = List(
-              IR.Node.Uninterpreted("["),
-              IR.Node.Name("l1"),
-              IR.Node.Uninterpreted(" EXCEPT "),
-              IR.Node.Uninterpreted("!.y = "),
-              IR.Node.Name("l1"),
-              IR.Node.Uninterpreted(".y"),
-              IR.Node.Uninterpreted(" - "),
-              IR.Node.Name("v"),
-              IR.Node.Uninterpreted("]")
-            )
-          )
-        ),
-        body = List(
-          IR.Node.Let(
-            name = "_state3",
-            // { [s EXCEPT !.i = s.i + 1]: s \in _state2 }
-            binding = List(
-              IR.Node.MapOnSet(
-                set = List( IR.Node.Name("_state2") ),
-                setMember = "l2",
-                proc = List(
-                  IR.Node.Uninterpreted("["),
-                  IR.Node.Name("l2"),
-                  IR.Node.Uninterpreted(" EXCEPT "),
-                  IR.Node.Uninterpreted("!.i = "),
-                  IR.Node.Name("l2"),
-                  IR.Node.Uninterpreted(".i"),
-                  IR.Node.Uninterpreted(" + "),
-                  IR.Node.Uninterpreted("1"),
-                  IR.Node.Uninterpreted("]")
-                )
-              )
-            ),
-            body = List(
-              IR.Node.Name("_state3")
-            )
-          )
-        )
-      )
-    )
-  )
-
-  val testMultiLineDef = "def bar() { y := y - 1; x := x + 1; }"
-  val expectedMultiLineDef = IR.Definition(
-    name = "bar",
-    params = List("_state1"),
-    body = List(
-      IR.Node.Let(
-        name = "_state2",
-        // { [s EXCEPT !.y = s.y - 1]: s \in _state1 }
-        binding = List(
-          IR.Node.MapOnSet(
-            set = List(IR.Node.Name("_state1")),
-            setMember = "l1",
-            proc = List(
-              IR.Node.Uninterpreted("["),
-              IR.Node.Name("l1"),
-              IR.Node.Uninterpreted(" EXCEPT "),
-              IR.Node.Uninterpreted("!.y = "),
-              IR.Node.Name("l1"),
-              IR.Node.Uninterpreted(".y"),
-              IR.Node.Uninterpreted(" - "),
-              IR.Node.Uninterpreted("1"),
-              IR.Node.Uninterpreted("]")
-            )
-          )
-        ),
-        body = List(
-          IR.Node.Let(
-            name = "_state3",
-            // { [s EXCEPT !.x = s.x + 1]: s \in _state2 }
-            binding = List(
-              IR.Node.MapOnSet(
-                set = List(IR.Node.Name("_state2")),
-                setMember = "l2",
-                proc = List(
-                  IR.Node.Uninterpreted("["),
-                  IR.Node.Name("l2"),
-                  IR.Node.Uninterpreted(" EXCEPT "),
-                  IR.Node.Uninterpreted("!.x = "),
-                  IR.Node.Name("l2"),
-                  IR.Node.Uninterpreted(".x"),
-                  IR.Node.Uninterpreted(" + "),
-                  IR.Node.Uninterpreted("1"),
-                  IR.Node.Uninterpreted("]")
-                )
-              )
-            ),
-            body = List(
-              IR.Node.Name("_state3")
-            )
-          )
-        )
       )
     )
   )
@@ -591,26 +531,55 @@ class TestIRBuilder extends AnyFunSuite {
     )
   )
 
-  val testAwait = "def wait() { await x > 4; }"
-  val expectedAwait = IR.Definition(
-    name = "wait",
+  val testMultiLineDef = "def bar() { y := y - 1; x := x + 1; }"
+  val expectedMultiLineDef = IR.Definition(
+    name = "bar",
     params = List("_state1"),
     body = List(
       IR.Node.Let(
         name = "_state2",
         binding = List(
-          IR.Node.FilterOnSet(
+          IR.Node.MapOnSet(
             set = List(IR.Node.Name("_state1")),
             setMember = "l1",
-            pred = List(
+            proc = List(
+              IR.Node.Uninterpreted("["),
               IR.Node.Name("l1"),
-              IR.Node.Uninterpreted(".x"),
-              IR.Node.Uninterpreted(" > "),
-              IR.Node.Uninterpreted("4")
+              IR.Node.Uninterpreted(" EXCEPT "),
+              IR.Node.Uninterpreted("!.y = "),
+              IR.Node.Name("l1"),
+              IR.Node.Uninterpreted(".y"),
+              IR.Node.Uninterpreted(" - "),
+              IR.Node.Uninterpreted("1"),
+              IR.Node.Uninterpreted("]")
             )
           )
         ),
-        body = List(IR.Node.Name("_state2"))
+        body = List(
+          IR.Node.Let(
+            name = "_state3",
+            binding = List(
+              IR.Node.MapOnSet(
+                set = List(IR.Node.Name("_state2")),
+                setMember = "l2",
+                proc = List(
+                  IR.Node.Uninterpreted("["),
+                  IR.Node.Name("l2"),
+                  IR.Node.Uninterpreted(" EXCEPT "),
+                  IR.Node.Uninterpreted("!.x = "),
+                  IR.Node.Name("l2"),
+                  IR.Node.Uninterpreted(".x"),
+                  IR.Node.Uninterpreted(" + "),
+                  IR.Node.Uninterpreted("1"),
+                  IR.Node.Uninterpreted("]")
+                )
+              )
+            ),
+            body = List(
+              IR.Node.Name("_state3")
+            )
+          )
+        )
       )
     )
   )
@@ -632,23 +601,23 @@ class TestIRBuilder extends AnyFunSuite {
     testModule -> IR.Module(
       name = moduleName, definitions = Nil
     ),
-    TestUtils.sequenceLines(testModule, testDefNoParamsNoBody) -> IR.Module(
+    TestUtils.sequenceLines(testModule, testDefNoParamNoBody) -> IR.Module(
       name = moduleName,
       definitions = List(
         expectedDefNoParamsNoBody
       )
     ),
-    TestUtils.sequenceLines(testModule, testDefParam) -> IR.Module(
-      name = moduleName, definitions = List(expectedDefParam)
+    TestUtils.sequenceLines(testModule, testParams) -> IR.Module(
+      name = moduleName, definitions = List(expectedParams)
+    ),
+    TestUtils.sequenceLines(testModule, testAwait) -> IR.Module(
+      name = moduleName, definitions = List(expectedAwait)
     ),
     TestUtils.sequenceLines(testModule, testStateAssignPairs) -> IR.Module(
       name = moduleName, definitions = List(expectedStateAssignPairs)
     ),
     TestUtils.sequenceLines(testModule, testLongAssignPairs) -> IR.Module(
       name = moduleName, definitions = List(expectedLongAssignPairs)
-    ),
-    TestUtils.sequenceLines(testModule, testIfThenElse) -> IR.Module(
-      name = moduleName, definitions = List(expectedIfThenElse)
     ),
     TestUtils.sequenceLines(testModule, testLetEqualTo) -> IR.Module(
       name = moduleName,
@@ -658,14 +627,14 @@ class TestIRBuilder extends AnyFunSuite {
       name = moduleName,
       definitions = List(expectedLetIn)
     ),
-    TestUtils.sequenceLines(testModule, testAwait) -> IR.Module(
-      name = moduleName, definitions = List(expectedAwait)
-    ),
     TestUtils.sequenceLines(testModule, testVarEqualTo) -> IR.Module(
       name = moduleName, definitions = List(expectedVarEqualTo)
     ),
     TestUtils.sequenceLines(testModule, testVarIn) -> IR.Module(
       name = moduleName, definitions = List(expectedVarIn)
+    ),
+    TestUtils.sequenceLines(testModule, testIfThenElse) -> IR.Module(
+      name = moduleName, definitions = List(expectedIfThenElse)
     ),
     TestUtils.sequenceLines(testModule, testMultiLineDef) -> IR.Module(
       name = moduleName, definitions = List(expectedMultiLineDef)
@@ -679,10 +648,10 @@ class TestIRBuilder extends AnyFunSuite {
       )
     ),
     TestUtils.sequenceLines(
-      testModule, testStateAssignPairs, testDefParam, testDefNoParamsNoBody
+      testModule, testStateAssignPairs, testParams, testDefNoParamNoBody
     ) -> IR.Module(
       name = moduleName,
-      definitions = List(expectedStateAssignPairs, expectedDefParam, expectedDefNoParamsNoBody)
+      definitions = List(expectedStateAssignPairs, expectedParams, expectedDefNoParamsNoBody)
     )
   ).foreach {
     case (input, expectedOutput) =>

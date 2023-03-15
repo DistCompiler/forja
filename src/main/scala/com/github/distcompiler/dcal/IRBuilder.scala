@@ -1,7 +1,18 @@
 package com.github.distcompiler.dcal
 
 import com.github.distcompiler.dcal.DCalAST.AssignmentOp
-import com.github.distcompiler.dcal.DCalAST.Expression.{BracketedExpression, ExpressionBinOp, ExpressionLogicOp, ExpressionRelOp, False, IntLiteral, Name, Set, StringLiteral, True}
+import com.github.distcompiler.dcal.DCalAST.Expression.{
+  BracketedExpression,
+  ExpressionBinOp,
+  ExpressionLogicOp,
+  ExpressionRelOp,
+  False,
+  IntLiteral,
+  Name,
+  Set,
+  StringLiteral,
+  True
+}
 import com.github.distcompiler.dcal.DCalAST.Statement.{AssignPairs, Await, IfThenElse, Let, Var}
 import com.github.distcompiler.dcal.DCalParser.*
 
@@ -40,17 +51,17 @@ object IRBuilder {
   private var sc = 1
   private var ac = 1
 
-  def freshLocal: String =
+  private def freshLocal: String =
     val l = s"l$lc"
     lc = lc + 1
     l
 
-  def freshState: String =
+  private def freshState: String =
     val s = s"_state$sc"
     sc = sc + 1
     s
 
-  def freshAnon: String =
+  private def freshAnon: String =
     val a = s"_anon$ac"
     ac = ac + 1
     a
@@ -118,23 +129,14 @@ object IRBuilder {
   /**
    * Maps the DCal statement to the current state set, producing a new state set.
    * Examples:
-   * str is a state, _state1 is the current state
+   * Assume str is a state, _state1 is the current state
    *    str := "new string" -> { [s EXCEPT !.str = "new string"]: s \in _state1 }
-   * y & i are states, v is a local, _state1 is the current state
+   * Assume y & i are states, v is a local, _state1 is the current state
    *    y := y - v || i := i + 1 -> { [s EXCEPT !.y = s.y - v, !.i = s.i + 1 ]: s \in _state1 }
    */
   def generateAssignPairs(dcalAssignPairs: DCalAST.Statement.AssignPairs)(using ctx: Context): List[IR.Node] = {
-    // 1: Creates a new local to use as set member
-    // 2: Processes assign pairs
-    //    For each assign pair <name> := <expression>
-    //      - If <name> is a state, creates Uninterpreted(s"!.$name = "), else TODO
-    //      - Calls generateExpression(expression): y - v -> s.y - v, i + i -> s.i + 1
-    //      - Prepends Uninterpreted(s"!.$name = ") to generateExpression(expression) and returns
-    // 3: Add a Uninterpreted(", ") between each assign pairs then inserts the result into s"[$setMember EXCEPT]
-    // <processed assign pairs>]"
-
     /**
-     * Examples:
+     * Examples: Assume str, y, i are all state variables
      * str := "new string"  -> !.str = "new string"
      * y := y - v           -> !.y = s.y - v
      * i := i + 1           -> !.i = s.i + 1
@@ -144,23 +146,21 @@ object IRBuilder {
       ctx.nameInfoOf(dcalAssignPair.name) match {
         case NameInfo.Local => ???
         case NameInfo.State =>
-          // How to do the transformation y - v -> s.y - v? Adding "s" to the context mapping is not sufficient for y
-          // to be transformed to "s.y".
           ListBuffer[IR.Node](IR.Node.Uninterpreted(s"!.${dcalAssignPair.name} = ")) ++= generateExpression(dcalAssignPair.expression)(using ctx).toBuffer
       }
 
     def generateDelimitedAssignPairs(aps: List[DCalAST.AssignPair])(using ctx: Context) = {
       @tailrec
-      def delimitHelper(lst: List[DCalAST.AssignPair], acc: ListBuffer[IR.Node]): ListBuffer[IR.Node] = {
+      def delimit(lst: List[DCalAST.AssignPair], acc: ListBuffer[IR.Node]): ListBuffer[IR.Node] = {
         lst match {
           case Nil => acc
           case h::t => t match {
-            case Nil => delimitHelper(t, acc :++ generateAssignPair(h)(using ctx))
-            case _ => delimitHelper(t, acc :++ (generateAssignPair(h)(using ctx) += IR.Node.Uninterpreted(", ")))
+            case Nil => delimit(t, acc :++ generateAssignPair(h)(using ctx))
+            case _ => delimit(t, acc :++ (generateAssignPair(h)(using ctx) += IR.Node.Uninterpreted(", ")))
           }
         }
       }
-      delimitHelper(aps, ListBuffer[IR.Node]())
+      delimit(aps, ListBuffer[IR.Node]())
     }
 
     def generateProc(using ctx: Context): List[IR.Node] = {
@@ -197,14 +197,9 @@ object IRBuilder {
    *            ELSE LET _state3 == { [s EXCEPT !.y = s.y - 1]: ss \in { s } } IN _state3
    *          : s \in _state1 }
    */
-  // TODO: Remove duplication in then and else
   def generateIfThenElse(dcalIfThenElse: DCalAST.Statement.IfThenElse)
                         (using ctx: Context): List[IR.Node]
   = {
-    // 1: Returns a MapOnSet on the current state set, wrapped in UNION
-    // 2: For the MapOnSet:
-    //    - calls freshName to generate a local to use as the state set member
-    //    - fills in IF ... THEN ... ELSE ... as the proc
     // TODO: Define <pred> in AST, if <pred> then <block> else <block> | if <pred> then <pred> else <pred>
     def generateProc(using ctx: IRBuilder.Context): List[IR.Node] = {
       val pb = ListBuffer[IR.Node](IR.Node.Uninterpreted("IF "))
@@ -247,16 +242,12 @@ object IRBuilder {
   }
 
   def generateLet(dcalLet: DCalAST.Statement.Let, rest: List[DCalAST.Statement])(using ctx: Context): List[IR.Node] = {
-    // 1: Compiles a DCal let statement by generating a MapOnset whose proc is a LET expression. The LET expression's
-    // name and binding should be the DCal let statement's name and expression respectively.
-    // 2: Updates the ctx to contain the DCal name, the state name to be ???, then compiles the rest of the program.
     dcalLet.assignmentOp match
       case AssignmentOp.EqualTo =>
         val setMember = freshLocal
         val newState = freshState
         List(
           IR.Node.Uninterpreted("UNION"),
-          // { <proc>: <setMember> \in <stateName> }
           IR.Node.MapOnSet(
             set = List(IR.Node.Name(ctx.stateName)),
             setMember = setMember,
@@ -266,7 +257,6 @@ object IRBuilder {
               IR.Node.Let(
                 name = dcalLet.name,
                 binding = generateExpression(dcalLet.expression),
-                // <rest> where <name> exists, where <rest> is operated on { <setMember> }
                 body = List(
                   IR.Node.Let(
                     name = newState,
@@ -355,7 +345,7 @@ object IRBuilder {
               )
           )
         )
-      case DCalAST.AssignmentOp.SlashIn => ???
+      case DCalAST.AssignmentOp.SlashIn => ??? // Should be unreachable
     }
 
   }
@@ -489,7 +479,6 @@ object IRBuilder {
   }
 
   def build(dcalModule: DCalAST.Module): IR.Module = {
-    // Construct the IR Module to return, which holds all the generated TLA+ code
     val definitions = dcalModule.definitions.map(generateDefinition)
     val imports = dcalModule.imports.map(generateDefinition)
     IR.Module(
@@ -499,11 +488,8 @@ object IRBuilder {
   }
 
   def apply(contents: String, fileName: String): IR.Module = {
-    // Set up logging
-    // Parse DCal contents
+    // TODO: Set up logging
     val dcalModule = DCalParser(contents = contents, fileName = fileName)
-    // Build the IR
     build(dcalModule = dcalModule)
-    // Log the IR
   }
 }

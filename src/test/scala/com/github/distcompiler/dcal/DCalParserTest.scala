@@ -6,7 +6,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import scala.collection.immutable
 import scala.collection.immutable.List
 
-class TestDCalParser extends AnyFunSuite {
+class DCalParserTest extends AnyFunSuite {
 
   import DCalParser.*
 
