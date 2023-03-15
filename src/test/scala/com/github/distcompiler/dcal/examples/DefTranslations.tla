@@ -19,7 +19,7 @@ baz(_state1) ==
     IN
         _state2
 
-\* DCal: def sum(p1, p2) { let local = p1 + p2; x := local }
+\* DCal: def sum(p1, p2) { let local = p1 + p2; x := local; }
 sum(_state1, p1, p2) ==
     LET
         _state2 == UNION {
@@ -30,11 +30,11 @@ sum(_state1, p1, p2) ==
                 IN
                     LET _state4 == { [l2 EXCEPT !.x = local] : l2 \in _state3 }
                     IN _state4
-        : s \in _state1 }
+        : l1 \in _state1 }
     IN
         _state2
 
-\* def foo() { let z == y + 1; x := z - 3; await x < 7 }
+\* def foo() { let z = y + 1; x := z - 3; await x < 7; }
 foo(_state1) ==
     UNION {
         LET
@@ -56,12 +56,57 @@ testVar(_state1) ==
         LET _state3 == { [l2 EXCEPT !.x = l2.x + l2.z ]: l2 \in _state2 }
         IN _state3
 
-\* DCal: def testLetIn() { let z \in set; x := x + z; }
-testLetIn(_state1) ==
-    UNION { UNION { [ s EXCEPT !.x = s.x + z ] : z \in s.set } : s \in _state1 }
+\* DCal: def testLetIn1() { let z \in set; x := x + z; }
+testLetIn1(_state1) ==
+\*    UNION { UNION { [ s EXCEPT !.x = s.x + z ] : z \in s.set } : s \in _state1 }
+    LET _state2 ==
+        UNION {
+            UNION {
+                LET _state3 == { l1 }
+                IN
+                    LET _state4 == { [l2 EXCEPT !.x = l2.x + z ] : l2 \in _state3 }
+                    IN _state4
+                : z \in l1.set
+            } : l1 \in _state1
+        }
+    IN _state2
 
-\* DCal: def f() { var z \in {1, 2, 3, 4, 5}; }
-\* translates to DCal: let _anon42 \in {1, 2, 3, 4, 5}; var z = _anon42;
+\* DCal: def testLetIn2() { let z \in set; x := x + z; await x > 10; }
+testLetIn2(_state1) ==
+    LET
+        _state2 ==
+            UNION {
+               UNION {
+                   LET _state3 == { l1 }
+                   IN
+                       LET _state4 == { [ l2 EXCEPT !.x = l2.x + z ]: l2 \in _state3 }
+                       IN
+                           LET _state5 == { l3 \in _state4 : l3.x > 10 }
+                           IN _state5
+                   : z \in l1.set
+               }
+               : l1 \in _state1
+           }
+    IN _state2
+
+\* DCal: def testVarIn() { var z \in {1, 2, 3, 4, 5}; }
+\* translates to DCal: def testVarIn() { let _anon1 \in {1, 2, 3, 4, 5}; var z = _anon1; }
+testVarIn(_state1) ==
+    LET
+        _state2 == UNION {
+            UNION {
+                LET
+                    _state3 == { l1 }
+                IN
+                    LET _state4 == { [l3 \in DOMAIN l2 \cup { "z" } |->
+                                     IF l3 = "z" THEN _anon1 ELSE l2[l3] ]: l2 \in _state3 }
+                    IN _state4
+                : _anon1 \in {1, 2, 3, 4, 5}
+            }
+            : l1 \in _state1
+        }
+    IN
+        _state2
 
 \* DCal: def testWait() { await x > 4; }
 testWait(_state1) ==

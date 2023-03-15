@@ -1,10 +1,11 @@
 package com.github.distcompiler.dcal
 
-import com.github.distcompiler.dcal.DCalAST.Expression.{BracketedExpression, ExpressionBinOp, ExpressionRelOp, False, IntLiteral, Name, StringLiteral, True}
+import com.github.distcompiler.dcal.DCalAST.AssignmentOp
+import com.github.distcompiler.dcal.DCalAST.Expression.{BracketedExpression, ExpressionBinOp, ExpressionLogicOp, ExpressionRelOp, False, IntLiteral, Name, Set, StringLiteral, True}
 import com.github.distcompiler.dcal.DCalAST.Statement.{AssignPairs, Await, IfThenElse, Let, Var}
 import com.github.distcompiler.dcal.DCalParser.*
 
-import java.lang.Package
+import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
 /**
@@ -23,12 +24,12 @@ object IRBuilder {
 
   final case class Context(stateName: String,
                            nameInfoOf: Map[String,NameInfo],
-                           mapFilterOnSetInfo: (String, String) = null) {
+                           mapFilterOnSetInfo: (String, List[IR.Node]) = null) {
 
     def withNameInfo(name: String, nameInfo: NameInfo): Context =
       copy(nameInfoOf = nameInfoOf.updated(name, nameInfo))
 
-    def withMapOnSetInfo(setMember: String, set: String): Context =
+    def withMapFilterOnSetInfo(setMember: String, set: List[IR.Node]): Context =
       copy(mapFilterOnSetInfo = (setMember, set))
 
     def withStateName(stateName: String): Context =
@@ -37,18 +38,22 @@ object IRBuilder {
 
   private var lc = 1
   private var sc = 1
+  private var ac = 1
 
-  def freshLocal: String = {
+  def freshLocal: String =
     val l = s"l$lc"
     lc = lc + 1
     l
-  }
 
-  def freshState: String = {
+  def freshState: String =
     val s = s"_state$sc"
     sc = sc + 1
     s
-  }
+
+  def freshAnon: String =
+    val a = s"_anon$ac"
+    ac = ac + 1
+    a
 
   def generateBinOp(dcalBinOp: DCalAST.BinOp): IR.Node = {
     dcalBinOp match {
@@ -92,7 +97,9 @@ object IRBuilder {
       case BracketedExpression(expr) =>
         List(IR.Node.Uninterpreted("(")) ++ generateExpression(expr) ++ List(IR.Node.Uninterpreted(")"))
 
-      case _ => ???
+      case ExpressionLogicOp(_, _, _) => ???
+
+      case Set(members) => List(IR.Node.Set(members = members.map(generateExpression)))
     }
   }
 
@@ -103,7 +110,7 @@ object IRBuilder {
         set = List(IR.Node.Name(ctx.stateName)),
         setMember = setMember,
         pred = generateExpression(dcalAwait.expression)(using ctx.withNameInfo(setMember, NameInfo.Local)
-          .withMapOnSetInfo(setMember, ctx.stateName))
+          .withMapFilterOnSetInfo(setMember, List(IR.Node.Name(ctx.stateName))))
       )
     )
   }
@@ -143,6 +150,7 @@ object IRBuilder {
       }
 
     def generateDelimitedAssignPairs(aps: List[DCalAST.AssignPair])(using ctx: Context) = {
+      @tailrec
       def delimitHelper(lst: List[DCalAST.AssignPair], acc: ListBuffer[IR.Node]): ListBuffer[IR.Node] = {
         lst match {
           case Nil => acc
@@ -173,7 +181,9 @@ object IRBuilder {
       IR.Node.MapOnSet(
         set = List(IR.Node.Name(ctx.stateName)),
         setMember = setMember,
-        proc = generateProc(using ctx.withNameInfo(setMember, NameInfo.Local).withMapOnSetInfo(setMember, ctx.stateName))
+        proc = generateProc(using ctx
+          .withNameInfo(setMember, NameInfo.Local)
+          .withMapFilterOnSetInfo(setMember, List(IR.Node.Name(ctx.stateName))))
       )
     )
   }
@@ -228,8 +238,10 @@ object IRBuilder {
       IR.Node.MapOnSet(
         set = List(IR.Node.Name(ctx.stateName)),
         setMember = setMember,
-        proc = generateProc(using ctx.withMapOnSetInfo(setMember, ctx.stateName).withNameInfo(setMember, NameInfo
-          .Local))
+        proc = generateProc(using ctx
+          .withMapFilterOnSetInfo(setMember, List(IR.Node.Name(ctx.stateName)))
+          .withNameInfo(setMember, NameInfo
+            .Local))
       )
     )
   }
@@ -238,37 +250,89 @@ object IRBuilder {
     // 1: Compiles a DCal let statement by generating a MapOnset whose proc is a LET expression. The LET expression's
     // name and binding should be the DCal let statement's name and expression respectively.
     // 2: Updates the ctx to contain the DCal name, the state name to be ???, then compiles the rest of the program.
-    val setMember = freshLocal
-    val newState = freshState
-    List(
-      IR.Node.Uninterpreted("UNION"),
-      // { <proc>: <setMember> \in <stateName> }
-      IR.Node.MapOnSet(
-        set = List(IR.Node.Name(ctx.stateName)),
-        setMember = setMember,
-        // TODO: Add setMember to ctx of proc
-        // LET <name> == <expr> IN LET <newstate> == { <setMember> } IN <rest>
-        proc = List(
-          IR.Node.Let(
-            name = dcalLet.name,
-            binding = generateExpression(dcalLet.expression),
-            // <rest> where <name> exists, where <rest> is operated on { <setMember> }
-            body = List(
+    dcalLet.assignmentOp match
+      case AssignmentOp.EqualTo =>
+        val setMember = freshLocal
+        val newState = freshState
+        List(
+          IR.Node.Uninterpreted("UNION"),
+          // { <proc>: <setMember> \in <stateName> }
+          IR.Node.MapOnSet(
+            set = List(IR.Node.Name(ctx.stateName)),
+            setMember = setMember,
+            // TODO: Add setMember to ctx of proc
+            // LET <name> == <expr> IN LET <newstate> == { <setMember> } IN <rest>
+            proc = List(
               IR.Node.Let(
-                name = newState,
-                binding = List(IR.Node.Uninterpreted("{ "), IR.Node.Name(setMember), IR.Node.Uninterpreted(" }")),
-                body = generateStatements(rest)(using ctx.withNameInfo(setMember, NameInfo.Local).withNameInfo
-                (dcalLet.name, NameInfo.Local).withStateName(newState))
+                name = dcalLet.name,
+                binding = generateExpression(dcalLet.expression),
+                // <rest> where <name> exists, where <rest> is operated on { <setMember> }
+                body = List(
+                  IR.Node.Let(
+                    name = newState,
+                    binding = List(
+                      IR.Node.Uninterpreted("{ "),
+                      IR.Node.Name(setMember),
+                      IR.Node.Uninterpreted(" }")
+                    ),
+                    body = generateStatements(rest)(using ctx.withNameInfo(setMember, NameInfo.Local).withNameInfo
+                    (dcalLet.name, NameInfo.Local).withStateName(newState))
+                  )
+                )
               )
             )
           )
         )
-      )
-    )
+      case AssignmentOp.SlashIn =>
+        val outerSetMember = freshLocal
+
+        def generateInnerProc(using ctx: Context): List[IR.Node] =
+          val newState = freshState
+          List(
+            IR.Node.Let(
+              name = newState,
+              binding = List(
+                IR.Node.Uninterpreted("{ "),
+                IR.Node.Name(outerSetMember),
+                IR.Node.Uninterpreted(" }")
+              ),
+              body = generateStatements(rest)(using ctx.withStateName(newState))
+            )
+          )
+
+        def generateOuterProc(using ctx: Context): List[IR.Node] =
+          val innerSetMember = dcalLet.name
+          val set = generateExpression(dcalLet.expression)
+          List(
+            IR.Node.Uninterpreted("UNION "),
+            IR.Node.MapOnSet(
+              set = set,
+              setMember = innerSetMember,
+              proc = generateInnerProc(using ctx
+                .withNameInfo(innerSetMember, NameInfo.Local)
+                .withMapFilterOnSetInfo(innerSetMember, set)
+              )
+            )
+          )
+
+        List(
+          IR.Node.Uninterpreted("UNION "),
+          IR.Node.MapOnSet(
+            set = List(IR.Node.Name(ctx.stateName)),
+            setMember = outerSetMember,
+            proc = generateOuterProc(using ctx
+              .withNameInfo(outerSetMember, NameInfo.Local)
+              .withMapFilterOnSetInfo(outerSetMember, List(IR.Node.Name(ctx.stateName)))
+            )
+          )
+        )
   }
 
   def generateVar(dcalVar: DCalAST.Statement.Var)(using ctx: Context): List[IR.Node] = {
-    dcalVar.expressionOpt.get._1 match {
+    val name = dcalVar.name
+    val assignmentOp = dcalVar.expressionOpt.get._1
+    val expr = dcalVar.expressionOpt.get._2
+    assignmentOp match {
       case DCalAST.AssignmentOp.EqualTo =>
         val setMember = freshLocal
         val setKey = freshLocal
@@ -278,21 +342,16 @@ object IRBuilder {
             setMember = setMember,
             proc = List(
               IR.Node.Uninterpreted("["),
-              IR.Node.Uninterpreted(setKey),
-              IR.Node.Uninterpreted(" \\in DOMAIN "),
+              IR.Node.Uninterpreted(s"""$setKey \\in DOMAIN """),
               IR.Node.Name(setMember),
-              IR.Node.Uninterpreted(s"""\\cup { "${dcalVar.name}" } |-> IF """),
-              IR.Node.Uninterpreted(setKey),
+              IR.Node.Uninterpreted(s""" \\cup { "$name" } |-> IF $setKey = "$name" THEN """),
               // TODO: Throw error if expressionOpt matches None
-              IR.Node.Uninterpreted(s""" = "${dcalVar.name}" THEN """)
             ) ++
-              generateExpression(dcalVar.expressionOpt.get._2) ++
+              generateExpression(expr) ++
               List(
                 IR.Node.Uninterpreted(" ELSE "),
                 IR.Node.Name(setMember),
-                IR.Node.Uninterpreted("["),
-                IR.Node.Uninterpreted(setKey),
-                IR.Node.Uninterpreted("]]")
+                IR.Node.Uninterpreted(s"[$setKey]]"),
               )
           )
         )
@@ -335,7 +394,7 @@ object IRBuilder {
                 body = generateStatements(ss)(using newCtx)
               )
             )
-          case let @ Let(_, _) =>
+          case let @ Let(_, _, _) =>
             val newState = freshState
             List(
               IR.Node.Let(
@@ -366,15 +425,45 @@ object IRBuilder {
     }
   }
 
+
+  /**
+   * Transforms all "var <name> \in <expression>" into the sequence
+   * "let <anon-name> \in <expression>" followed by "var <name> = <anon-name>"
+   */
+  def preprocessStatements(dcalStmts: List[DCalAST.Statement]): List[DCalAST.Statement] =
+    val transformed = ListBuffer[DCalAST.Statement]()
+    dcalStmts.foreach { dcalStmt =>
+      dcalStmt match
+        case Var(name, Some(DCalAST.AssignmentOp.SlashIn, expr)) =>
+          val newAnon = freshAnon
+          transformed.append(
+            DCalAST.Statement.Let(
+              name = newAnon,
+              assignmentOp = DCalAST.AssignmentOp.SlashIn,
+              expression = expr
+            )
+          )
+          transformed.append(
+            DCalAST.Statement.Var(
+              name = name,
+              expressionOpt = Some(DCalAST.AssignmentOp.EqualTo, DCalAST.Expression.Name(newAnon))
+            )
+          )
+        case _ => transformed.append(dcalStmt)
+    }
+    transformed.toList
+
   def generateDefinition(dcalDef: DCalAST.Definition): IR.Definition = {
     lc = 1
     sc = 1
+    ac = 1
     var initialCtx = Context(
       nameInfoOf = Map[String, NameInfo](
         "str" -> NameInfo.State,
         "x" -> NameInfo.State,
         "y" -> NameInfo.State,
-        "i" -> NameInfo.State
+        "i" -> NameInfo.State,
+        "set" -> NameInfo.State
       ),
       stateName = freshState
     )
@@ -387,7 +476,7 @@ object IRBuilder {
       name = dcalDef.name,
       params = initialCtx.stateName +: dcalDef.params,
       body = generateStatements(
-        dcalStmts = dcalDef.body.statements
+        dcalStmts = preprocessStatements(dcalDef.body.statements)
       )(using initialCtx)
     )
   }
@@ -395,6 +484,7 @@ object IRBuilder {
   def generateDefinition(dcalImport: String): IR.Definition = {
     lc = 1
     sc = 1
+    ac = 1
     ???
   }
 

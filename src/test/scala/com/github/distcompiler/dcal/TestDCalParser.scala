@@ -69,7 +69,10 @@ class TestDCalParser extends AnyFunSuite {
           params = List("anArg"),
           body = DCalAST.Block(
             statements = List(
-              DCalAST.Statement.Let(name = "test1", expression = DCalAST.Expression.True),
+              DCalAST.Statement.Let(
+                name = "test1",
+                assignmentOp = DCalAST.AssignmentOp.EqualTo,
+                expression = DCalAST.Expression.True),
               DCalAST.Statement.Var(name = "test2", expressionOpt = None),
               DCalAST.Statement.Var(
                 name = "test3",

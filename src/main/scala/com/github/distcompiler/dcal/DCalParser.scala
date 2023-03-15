@@ -100,17 +100,17 @@ object DCalParser {
           pairs => DCalAST.Statement.AssignPairs(pairs)
         }
 
-      val let = (elem(DCalTokenData.Let) ~> name ~ elem(DCalTokenData.EqualTo) ~ expression).map {
-        case name ~ _ ~ expr => DCalAST.Statement.Let(name = name, expression = expr)
-      }
-
-      val op: Parser[DCalAST.AssignmentOp] = acceptMatch("var operator", {
+      val assignmentOp: Parser[DCalAST.AssignmentOp] = acceptMatch("var/let operator", {
         case DCalTokenData.EqualTo => DCalAST.AssignmentOp.EqualTo
         case DCalTokenData.SlashIn => DCalAST.AssignmentOp.SlashIn
       })
 
+      val let = (elem(DCalTokenData.Let) ~> name ~ assignmentOp ~ expression).map {
+        case name ~ op ~ expr => DCalAST.Statement.Let(name = name, assignmentOp = op, expression = expr)
+      }
+
       val `var` =
-        (elem(DCalTokenData.Var) ~> name ~ opt(op ~ expression)).map {
+        (elem(DCalTokenData.Var) ~> name ~ opt(assignmentOp ~ expression)).map {
           case name ~ Some(opOpt ~ exprOpt) => DCalAST.Statement.Var(name = name, expressionOpt = Some((opOpt, exprOpt)))
           case name ~ None => DCalAST.Statement.Var(name = name, expressionOpt = None)
         }

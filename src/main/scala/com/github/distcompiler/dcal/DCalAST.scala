@@ -14,7 +14,7 @@ object DCalAST {
   statement ::=
     | `await` <predicate>
     | <assign_pair> (`||` <assign_pair>)*
-    | `let` <name> `=` <expression>
+    | `let` <name> (`=` | `\in`) <expression>
     | `var` <name> ((`=` | `\in`) <expression>)?
     | `if` <predicate> `then` <block> (`else` <expression>)?
 
@@ -53,7 +53,7 @@ object DCalAST {
   enum Statement {
     case Await(expression: Expression)
     case AssignPairs(assignPairs: List[AssignPair])
-    case Let(name: String, expression: Expression)
+    case Let(name: String, assignmentOp: AssignmentOp, expression: Expression)
     case Var(name: String, expressionOpt: Option[(AssignmentOp, Expression)])
     case IfThenElse(predicate: Expression, thenBlock: Block, elseBlock: Block)
   }
