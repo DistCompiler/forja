@@ -110,7 +110,19 @@ object IRBuilder {
 
       case ExpressionLogicOp(_, _, _) => ???
 
-      case Set(members) => List(IR.Node.Set(members = members.map(generateExpression)))
+      case Set(members) =>
+        @tailrec
+        def delimit(lst: List[DCalAST.Expression], acc: ListBuffer[IR.Node]): ListBuffer[IR.Node] = {
+          lst match {
+            case Nil => acc
+            case h :: t => t match {
+              case Nil => delimit(t, acc :++ generateExpression(h)(using ctx))
+              case _ => delimit(t, acc :++ (generateExpression(h)(using ctx) :+ IR.Node.Uninterpreted(", ")))
+            }
+          }
+        }
+
+        (delimit(members, ListBuffer[IR.Node](IR.Node.Uninterpreted("{ "))) += IR.Node.Uninterpreted(" }")).toList
     }
   }
 

@@ -99,6 +99,60 @@ class DCalCompilerTest extends AnyFunSuite {
         """{ [x |-> 2, y |-> 3, str |-> "", i |-> 10, set |-> {1, 5, 10}],
           |[x |-> 19, y |-> 1, str |-> "", i |-> 100, set |-> {0, 3, 6}],
           |[x |-> 30, y |-> 0, str |-> "", i |-> 0, set |-> {10, 11, 12}] }""".stripMargin
+    ),
+    TLCTest(
+      testDescription = "let \\in ...",
+      module =
+        """module MyTest
+          |def testLetIn() { let z \in set; x := x + z; }""".stripMargin,
+      defName = "testLetIn",
+      initialStates = initialStates,
+      expectedStates =
+        """{ [x |-> 2, y |-> 3, str |-> "", i |-> 10, set |-> {1, 5, 10}],
+          |[x |-> 6, y |-> 3, str |-> "", i |-> 10, set |-> {1, 5, 10}],
+          |[x |-> 11, y |-> 3, str |-> "", i |-> 10, set |-> {1, 5, 10}],
+          |[x |-> 19, y |-> 2, str |-> "", i |-> 100, set |-> {0, 3, 6}],
+          |[x |-> 22, y |-> 2, str |-> "", i |-> 100, set |-> {0, 3, 6}],
+          |[x |-> 25, y |-> 2, str |-> "", i |-> 100, set |-> {0, 3, 6}],
+          |[x |-> 40, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}],
+          |[x |-> 41, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}],
+          |[x |-> 42, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}] }""".stripMargin
+    ),
+    TLCTest(
+      testDescription = "var = ...",
+      module =
+        """module MyTest
+          |def testVar() { var z = 10; x := x + z; }""".stripMargin,
+      defName = "testVar",
+      initialStates = initialStates,
+      expectedStates =
+        """{ [x |-> 11, y |-> 3, str |-> "", i |-> 10, set |-> {1, 5, 10}, z |-> 10],
+          |[x |-> 29, y |-> 2, str |-> "", i |-> 100, set |-> {0, 3, 6}, z |-> 10],
+          |[x |-> 40, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}, z |-> 10] }""".stripMargin
+    ),
+    TLCTest(
+      testDescription = "var \\in ...",
+      module =
+        """module MyTest
+          |def testVarIn() { var z \in {1, 2, 3, 4, 5}; }""".stripMargin,
+      defName = "testVarIn",
+      initialStates = initialStates,
+      expectedStates =
+        """{ [x |-> 1, y |-> 3, str |-> "", i |-> 10, set |-> {1, 5, 10}, z |-> 1],
+          |[x |-> 1, y |-> 3, str |-> "", i |-> 10, set |-> {1, 5, 10}, z |-> 2],
+          |[x |-> 1, y |-> 3, str |-> "", i |-> 10, set |-> {1, 5, 10}, z |-> 3],
+          |[x |-> 1, y |-> 3, str |-> "", i |-> 10, set |-> {1, 5, 10}, z |-> 4],
+          |[x |-> 1, y |-> 3, str |-> "", i |-> 10, set |-> {1, 5, 10}, z |-> 5],
+          |[x |-> 19, y |-> 2, str |-> "", i |-> 100, set |-> {0, 3, 6}, z |-> 1],
+          |[x |-> 19, y |-> 2, str |-> "", i |-> 100, set |-> {0, 3, 6}, z |-> 2],
+          |[x |-> 19, y |-> 2, str |-> "", i |-> 100, set |-> {0, 3, 6}, z |-> 3],
+          |[x |-> 19, y |-> 2, str |-> "", i |-> 100, set |-> {0, 3, 6}, z |-> 4],
+          |[x |-> 19, y |-> 2, str |-> "", i |-> 100, set |-> {0, 3, 6}, z |-> 5],
+          |[x |-> 30, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}, z |-> 1],
+          |[x |-> 30, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}, z |-> 2],
+          |[x |-> 30, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}, z |-> 3],
+          |[x |-> 30, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}, z |-> 4],
+          |[x |-> 30, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}, z |-> 5] }""".stripMargin
     )
   ).foreach {
     case TLCTest(testDescription, module, defName, params, initialStates, expectedStates) =>
@@ -117,42 +171,7 @@ class DCalCompilerTest extends AnyFunSuite {
   }
 
   List(
-    TLCTest(
-      testDescription = "let \\in ...",
-      module =
-        """module MyTest
-          |def ...""".stripMargin,
-      defName = "???",
-      initialStates = initialStates,
-      expectedStates =
-        """{ [x |-> 1, y |-> 3, str |-> "new string", i |-> 10, set |-> {1, 5, 10}],
-          |[x |-> 19, y |-> 2, str |-> "new string", i |-> 100, set |-> {0, 3, 6}],
-          |[x |-> 30, y |-> 1, str |-> "new string", i |-> 0, set |-> {10, 11, 12}] }""".stripMargin
-    ),
-    TLCTest(
-      testDescription = "var = ...",
-      module =
-        """module MyTest
-          |def ...""".stripMargin,
-      defName = "???",
-      initialStates = initialStates,
-      expectedStates =
-        """{ [x |-> 1, y |-> 3, str |-> "new string", i |-> 10, set |-> {1, 5, 10}],
-          |[x |-> 19, y |-> 2, str |-> "new string", i |-> 100, set |-> {0, 3, 6}],
-          |[x |-> 30, y |-> 1, str |-> "new string", i |-> 0, set |-> {10, 11, 12}] }""".stripMargin
-    ),
-    TLCTest(
-      testDescription = "var \\in ...",
-      module =
-        """module MyTest
-          |def ...""".stripMargin,
-      defName = "???",
-      initialStates = initialStates,
-      expectedStates =
-        """{ [x |-> 1, y |-> 3, str |-> "new string", i |-> 10, set |-> {1, 5, 10}],
-          |[x |-> 19, y |-> 2, str |-> "new string", i |-> 100, set |-> {0, 3, 6}],
-          |[x |-> 30, y |-> 1, str |-> "new string", i |-> 0, set |-> {10, 11, 12}] }""".stripMargin
-    ),
+    // Place failing tests here
   ).foreach {
     case TLCTest(testDescription, module, defName, params, initialStates, expectedStates) =>
       ignore(testDescription) {

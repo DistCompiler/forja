@@ -22,7 +22,6 @@ object IR {
     case Name(name: String)
     case Let(name: String, binding: List[Node], body: List[Node])
     case Uninterpreted(text: String)
-    case Set(members: List[List[IR.Node]])
     case MapOnSet(set: List[Node], setMember: String, proc: List[IR.Node])
     case FilterOnSet(set: List[Node], setMember: String, pred: List[IR.Node])
   }

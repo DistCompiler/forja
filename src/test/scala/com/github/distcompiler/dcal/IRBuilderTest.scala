@@ -361,21 +361,22 @@ class IRBuilderTest extends AnyFunSuite {
               IR.Node.Uninterpreted("UNION "),
               IR.Node.MapOnSet(
                 set = List(
-                  IR.Node.Set(
-                    members = List(
-                      List(IR.Node.Uninterpreted("1")),
-                      List(IR.Node.Uninterpreted("2")),
-                      List(IR.Node.Uninterpreted("3")),
-                      List(IR.Node.Uninterpreted("4")),
-                      List(IR.Node.Uninterpreted("5"))
-                    )
-                  )
+                  IR.Node.Uninterpreted("{ "),
+                  IR.Node.Uninterpreted("1"),
+                  IR.Node.Uninterpreted(", "),
+                  IR.Node.Uninterpreted("2"),
+                  IR.Node.Uninterpreted(", "),
+                  IR.Node.Uninterpreted("3"),
+                  IR.Node.Uninterpreted(", "),
+                  IR.Node.Uninterpreted("4"),
+                  IR.Node.Uninterpreted(", "),
+                  IR.Node.Uninterpreted("5"),
+                  IR.Node.Uninterpreted(" }")
                 ),
                 setMember = "_anon1",
                 proc = List(
                   IR.Node.Let(
                     name = "_state3",
-                    // TODO: Consider if the sequence of IR Nodes {, l1, } could be turned into IR.Node.Set
                     binding = List(
                       IR.Node.Uninterpreted("{ "),
                       IR.Node.Name("l1"),
@@ -433,7 +434,6 @@ class IRBuilderTest extends AnyFunSuite {
               IR.Node.Uninterpreted(" <= "),
               IR.Node.Name("l1"),
               IR.Node.Uninterpreted(".y"),
-              // TODO: Possibly add a whitespace or newline here, between IF ... THEN ... ELSE?
               IR.Node.Uninterpreted("\nTHEN "),
               IR.Node.Let(
                 name = "_state3",
