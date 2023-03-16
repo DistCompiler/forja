@@ -434,7 +434,7 @@ class IRBuilderTest extends AnyFunSuite {
               IR.Node.Name("l1"),
               IR.Node.Uninterpreted(".y"),
               // TODO: Possibly add a whitespace or newline here, between IF ... THEN ... ELSE?
-              IR.Node.Uninterpreted("THEN "),
+              IR.Node.Uninterpreted("\nTHEN "),
               IR.Node.Let(
                 name = "_state3",
                 binding = List(
@@ -466,7 +466,7 @@ class IRBuilderTest extends AnyFunSuite {
                   )
                 )
               ),
-              IR.Node.Uninterpreted("ELSE "),
+              IR.Node.Uninterpreted("\nELSE "),
               IR.Node.Let(
                 name = "_state5",
                 binding = List(

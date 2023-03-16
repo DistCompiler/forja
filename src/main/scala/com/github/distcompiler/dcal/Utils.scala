@@ -9,9 +9,9 @@ object Utils {
         case Node.Name(name) => name.iterator
 
         case Node.Let(name, binding, body) =>
-          s"LET\n$name == ".iterator ++
+          s"LET $name == ".iterator ++
             stringifyNodes(binding) ++
-            "\nIN\n".iterator ++
+            "\nIN ".iterator ++
             stringifyNodes(body) ++
             "\n".iterator
 
@@ -40,18 +40,8 @@ object Utils {
     def stringifyNodes(nodes: List[IR.Node]): Iterator[Char] =
       nodes.iterator.flatMap(stringifyNode)
 
-    def stringifyParams(params: List[String]): Iterator[Char] = {
-      def delimit(lst: List[String], acc: Iterator[Char]): Iterator[Char] =
-        lst match {
-          case Nil => acc
-          case h :: t => t match {
-            case Nil => acc ++ h.iterator
-            case _ => acc ++ h.iterator ++ ", ".iterator ++ stringifyParams(t)
-          }
-        }
-
-      delimit(params, Iterator[Char]())
-    }
+    def stringifyParams(params: List[String]): Iterator[Char] =
+      params.mkString(", ").iterator
 
     def stringifyDefinition(definition: IR.Definition): Iterator[Char] =
       definition.name.iterator ++
@@ -63,6 +53,8 @@ object Utils {
 
     def stringifyModule(module: IR.Module): Iterator[Char] =
       s"---- MODULE ${module.name} ----".iterator ++
+        "\n".iterator ++
+        "EXTENDS Naturals\n" ++
         module.definitions.iterator.flatMap(stringifyDefinition) ++
         "====".iterator ++
         "\n".iterator

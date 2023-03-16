@@ -53,7 +53,7 @@ class UtilsTest extends AnyFunSuite {
   )
   val expectedUninterpreted = "[l1 EXCEPT !.y = l1.y - 1, !.x = l1.x + 1]"
   val expectedMapOnSetNode = s"{ $expectedUninterpreted: l1 \\in _state1 }"
-  val expectedLet = s"LET\n_state2 == $expectedMapOnSetNode\nIN\n_state2\n"
+  val expectedLet = s"LET _state2 == $expectedMapOnSetNode\nIN _state2\n"
   val expectedMapOnSetLetDef = s"""baz(_state1) ==\n$expectedLet\n"""
 
   val testFilterOnSetNode = IR.Definition(
@@ -78,7 +78,7 @@ class UtilsTest extends AnyFunSuite {
       )
     )
   )
-  val expectedFilterOnSetNode = "testWait(_state1) ==\nLET\n_state2 == { l1 \\in _state1: l1.x > 4 }\nIN\n_state2\n\n"
+  val expectedFilterOnSetNode = "testWait(_state1) ==\nLET _state2 == { l1 \\in _state1: l1.x > 4 }\nIN _state2\n\n"
 
   List(
     testBasicDef -> expectedBasicDef,

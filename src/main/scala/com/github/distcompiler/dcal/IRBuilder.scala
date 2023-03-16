@@ -212,7 +212,7 @@ object IRBuilder {
         binding = List(IR.Node.Uninterpreted("{ "), IR.Node.Name(ctx.mapFilterOnSetInfo._1), IR.Node.Uninterpreted(" }")),
         body = generateStatements(dcalIfThenElse.thenBlock.statements)(using ctx.withStateName(thenState))
       )
-      pb.append(IR.Node.Uninterpreted("THEN "))
+      pb.append(IR.Node.Uninterpreted("\nTHEN "))
       pb.append(thenBlock)
 
       val elseState = freshState
@@ -221,7 +221,7 @@ object IRBuilder {
         binding = List(IR.Node.Uninterpreted("{ "), IR.Node.Name(ctx.mapFilterOnSetInfo._1), IR.Node.Uninterpreted(" }")),
         body = generateStatements(dcalIfThenElse.elseBlock.statements)(using ctx.withStateName(elseState))
       )
-      pb.append(IR.Node.Uninterpreted("ELSE "))
+      pb.append(IR.Node.Uninterpreted("\nELSE "))
       pb.append(elseBlock)
 
       pb.toList
