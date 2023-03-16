@@ -588,7 +588,7 @@ class IRBuilderTest extends AnyFunSuite {
     // Place failing tests here
   ).foreach {
     case (input, expectedOutput) =>
-      ignore(s"generateIR($input)") {
+      ignore(s"buildIR($input)") {
         val actualOutput = IRBuilder(
           contents = input,
           fileName = "<testfile>",

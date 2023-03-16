@@ -3,12 +3,12 @@ package com.github.distcompiler.dcal
 import org.scalatest.funsuite.AnyFunSuite
 
 class IRBuilderHelpersTest extends AnyFunSuite {
-  final case class GenerateAssignPairsTest(ctx: IRBuilder.Context,
-                                           input: DCalAST.Statement.AssignPairs,
-                                           expectedOutput: List[IR.Node])
+  final case class AssignPairsTest(ctx: IRBuilder.Context,
+                                   input: DCalAST.Statement.AssignPairs,
+                                   expectedOutput: List[IR.Node])
 
   List(
-    GenerateAssignPairsTest(
+    AssignPairsTest(
       ctx = IRBuilder.Context(
         stateName = "_state1",
         nameInfoOf = Map[String, IRBuilder.NameInfo](
@@ -38,7 +38,7 @@ class IRBuilderHelpersTest extends AnyFunSuite {
         )
       )
     ),
-    GenerateAssignPairsTest(
+    AssignPairsTest(
       ctx = IRBuilder.Context(
         stateName = "_state1",
         nameInfoOf = Map[String, IRBuilder.NameInfo](
@@ -91,7 +91,7 @@ class IRBuilderHelpersTest extends AnyFunSuite {
       )
     )
   ).foreach {
-    case GenerateAssignPairsTest(ctx, input, expectedOutput) =>
+    case AssignPairsTest(ctx, input, expectedOutput) =>
       test(s"generateAssignPairs($input)") {
         val actualOutput = IRBuilder.generateAssignPairs(input)(using ctx)
         assert(actualOutput == expectedOutput)
