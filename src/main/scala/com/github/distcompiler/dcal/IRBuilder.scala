@@ -298,6 +298,8 @@ object IRBuilder {
                 IR.Node.Name(outerSetMember),
                 IR.Node.Uninterpreted(" }")
               ),
+              // Problem here: ...: z2 \in l5.set -> ctx.mapOnSetInfo = (z2, l5.set)
+              // z1 is a state variable, so z1 becomes z2.z1
               body = generateStatements(rest)(using ctx.withStateName(newState))
             )
           )
@@ -312,7 +314,6 @@ object IRBuilder {
               setMember = innerSetMember,
               proc = generateInnerProc(using ctx
                 .withNameInfo(innerSetMember, NameInfo.Local)
-                .withMapFilterOnSetInfo(innerSetMember, set)
               )
             )
           )

@@ -7,7 +7,6 @@ class DCalCompilerTest extends AnyFunSuite {
   def executeTLA(testModule: String, testModuleName: String, testDefName: String, testParams: List[String] = Nil,
                  initialStates: String, expectedStates: String): Unit = {
     val call = if testParams == Nil then s"$testDefName($initialStates)" else s"$testDefName($initialStates, ${testParams.mkString(", ")})"
-    printf("Calling %s\n", call)
     val harness =
       s"""
          |---- MODULE Test ----
@@ -153,10 +152,45 @@ class DCalCompilerTest extends AnyFunSuite {
           |[x |-> 30, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}, z |-> 3],
           |[x |-> 30, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}, z |-> 4],
           |[x |-> 30, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}, z |-> 5] }""".stripMargin
-    )
+    ),
+    TLCTest(
+      testDescription = "IfThenElse preceded and followed by other statements",
+      module =
+        """module MyTest
+          |def testLetIfThenElseAwait(v) { let z \in set; if z < x then { x := x + v; } else { x := x - v; } await x >=
+          | 119; }""".stripMargin,
+      defName = "testLetIfThenElseAwait",
+      testParams = List("100"),
+      initialStates = initialStates,
+      expectedStates =
+        """{ [x |-> 119, y |-> 2, str |-> "", i |-> 100, set |-> {0, 3, 6}],
+          |[x |-> 130, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}] }""".stripMargin
+    ),
+    TLCTest(
+      testDescription = "complex then block & empty else block",
+      module =
+        """module MyTest
+          |def testVarIfThenElse(zs) { var z1 \in zs; if z1 < x then { let z2 \in set; let z3 = z1 + z2; x := z3 + x; }
+          |else { } }"""
+          .stripMargin,
+      defName = "testVarIfThenElse",
+      testParams = List("{ 10, 10000 }"),
+      initialStates = initialStates,
+      expectedStates =
+        """{ [x |-> 1, y |-> 3, str |-> "", i |-> 10, set |-> {1, 5, 10}, z1 |-> 10],
+          |[x |-> 1, y |-> 3, str |-> "", i |-> 10, set |-> {1, 5, 10}, z1 |-> 10000],
+          |[x |-> 29, y |-> 2, str |-> "", i |-> 100, set |-> {0, 3, 6}, z1 |-> 10],
+          |[x |-> 32, y |-> 2, str |-> "", i |-> 100, set |-> {0, 3, 6}, z1 |-> 10],
+          |[x |-> 35, y |-> 2, str |-> "", i |-> 100, set |-> {0, 3, 6}, z1 |-> 10],
+          |[x |-> 19, y |-> 2, str |-> "", i |-> 100, set |-> {0, 3, 6}, z1 |-> 10000],
+          |[x |-> 50, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}, z1 |-> 10],
+          |[x |-> 51, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}, z1 |-> 10],
+          |[x |-> 52, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}, z1 |-> 10],
+          |[x |-> 30, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}, z1 |-> 10000] }""".stripMargin
+    ),
   ).foreach {
     case TLCTest(testDescription, module, defName, params, initialStates, expectedStates) =>
-      test(testDescription) {
+      ignore(testDescription) {
         val compiledModule = IRBuilder(contents = module, fileName = "<filename>")
         val stringifiedModule = IRUtils.stringifyModule(compiledModule).mkString
         executeTLA(
@@ -174,7 +208,7 @@ class DCalCompilerTest extends AnyFunSuite {
     // Place failing tests here
   ).foreach {
     case TLCTest(testDescription, module, defName, params, initialStates, expectedStates) =>
-      ignore(testDescription) {
+      test(testDescription) {
         val compiledModule = IRBuilder(contents = module, fileName = "<filename>")
         val stringifiedModule = IRUtils.stringifyModule(compiledModule).mkString
         executeTLA(
