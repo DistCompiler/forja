@@ -176,10 +176,10 @@ branchOnLocal(_state1) ==
 \* DCal: def bar(v) { y := y - v; i := i + 1; }
 bar(_state1, v) ==
     LET
-        _state2 == { [s EXCEPT !.y = s.y - v ]: s \in _state1 }
+        _state2 == { [l1 EXCEPT !.y = l1.y - v ]: l1 \in _state1 }
     IN
         LET
-            _state3 == { [s EXCEPT !.i = s.i + 1]: s \in _state2 }
+            _state3 == { [l2 EXCEPT !.i = l2.i + 1]: l2 \in _state2 }
         IN
             _state3
 
