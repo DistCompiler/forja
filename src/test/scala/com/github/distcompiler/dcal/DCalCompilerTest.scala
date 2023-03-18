@@ -88,6 +88,17 @@ class DCalCompilerTest extends AnyFunSuite {
           |[x |-> 10, y |-> 1, str |-> "", i |-> 0, set |-> {10, 11, 12}] }""".stripMargin
     ),
     TLCTest(
+      testDescription = "complex let = ...",
+      module =
+        """module MyTest
+          |def testComplexLetIn(v) { y := y + v; let local = y + y; await x > local; }""".stripMargin,
+      defName = "testComplexLetIn",
+      testParams = List("8"),
+      initialStates = initialStates,
+      expectedStates =
+        """{ [x |-> 30, y |-> 9, str |-> "", i |-> 0, set |-> {10, 11, 12}] }""".stripMargin
+    ),
+    TLCTest(
       testDescription = "IfThenElse",
       module =
         """module MyTest
@@ -190,7 +201,7 @@ class DCalCompilerTest extends AnyFunSuite {
     ),
   ).foreach {
     case TLCTest(testDescription, module, defName, params, initialStates, expectedStates) =>
-      ignore(testDescription) {
+      test(testDescription) {
         val compiledModule = IRBuilder(contents = module, fileName = "<filename>")
         val stringifiedModule = IRUtils.stringifyModule(compiledModule).mkString
         executeTLA(
@@ -208,7 +219,7 @@ class DCalCompilerTest extends AnyFunSuite {
     // Place failing tests here
   ).foreach {
     case TLCTest(testDescription, module, defName, params, initialStates, expectedStates) =>
-      test(testDescription) {
+      ignore(testDescription) {
         val compiledModule = IRBuilder(contents = module, fileName = "<filename>")
         val stringifiedModule = IRUtils.stringifyModule(compiledModule).mkString
         executeTLA(

@@ -1,18 +1,7 @@
 package com.github.distcompiler.dcal
 
-import com.github.distcompiler.dcal.DCalAST.AssignmentOp
-import com.github.distcompiler.dcal.DCalAST.Expression.{
-  BracketedExpression,
-  ExpressionBinOp,
-  ExpressionLogicOp,
-  ExpressionRelOp,
-  False,
-  IntLiteral,
-  Name,
-  Set,
-  StringLiteral,
-  True
-}
+import com.github.distcompiler.dcal.DCalAST.{AssignmentOp, Statement}
+import com.github.distcompiler.dcal.DCalAST.Expression.{BracketedExpression, ExpressionBinOp, ExpressionLogicOp, ExpressionRelOp, False, IntLiteral, Name, Set, StringLiteral, True}
 import com.github.distcompiler.dcal.DCalAST.Statement.{AssignPairs, Await, IfThenElse, Let, Var}
 import com.github.distcompiler.dcal.DCalParser.*
 
@@ -67,18 +56,12 @@ object IRBuilder {
   }
 
   private var lc = 1
-  private var sc = 1
   private var ac = 1
 
   private def freshLocal: String =
     val l = s"l$lc"
     lc = lc + 1
     l
-
-  private def freshState: String =
-    val s = s"_state$sc"
-    sc = sc + 1
-    s
 
   private def freshAnon: String =
     val a = s"_anon$ac"
@@ -237,23 +220,25 @@ object IRBuilder {
       val predicate = generateExpression(dcalIfThenElse.predicate)
       pb.appendAll(predicate)
 
-      val thenState = freshState
-      val thenBlock = IR.Node.Let(
-        name = thenState,
-        binding = List(IR.Node.Uninterpreted("{ "), IR.Node.Name(ctx.mapFilterOnSetInfo._1), IR.Node.Uninterpreted(" }")),
-        body = generateStatements(dcalIfThenElse.thenBlock.statements)(using ctx.withStateName(thenState))
+      ctx.withFreshStateName( newStateName =>
+        val thenBlock = IR.Node.Let(
+          name = newStateName,
+          binding = List(IR.Node.Uninterpreted("{ "), IR.Node.Name(ctx.mapFilterOnSetInfo._1), IR.Node.Uninterpreted(" }")),
+          body = generateStatements(dcalIfThenElse.thenBlock.statements)
+        )
+        pb.append(IR.Node.Uninterpreted("\nTHEN "))
+        pb.append(thenBlock)
       )
-      pb.append(IR.Node.Uninterpreted("\nTHEN "))
-      pb.append(thenBlock)
 
-      val elseState = freshState
-      val elseBlock = IR.Node.Let(
-        name = elseState,
-        binding = List(IR.Node.Uninterpreted("{ "), IR.Node.Name(ctx.mapFilterOnSetInfo._1), IR.Node.Uninterpreted(" }")),
-        body = generateStatements(dcalIfThenElse.elseBlock.statements)(using ctx.withStateName(elseState))
+      ctx.withFreshStateName( newStateName =>
+        val elseBlock = IR.Node.Let(
+          name = newStateName,
+          binding = List(IR.Node.Uninterpreted("{ "), IR.Node.Name(ctx.mapFilterOnSetInfo._1), IR.Node.Uninterpreted(" }")),
+          body = generateStatements(dcalIfThenElse.elseBlock.statements)
+        )
+        pb.append(IR.Node.Uninterpreted("\nELSE "))
+        pb.append(elseBlock)
       )
-      pb.append(IR.Node.Uninterpreted("\nELSE "))
-      pb.append(elseBlock)
 
       pb.toList
     }
@@ -282,30 +267,27 @@ object IRBuilder {
             set = List(IR.Node.Name(ctx.stateName)),
             setMember = setMember,
             // TODO: Add setMember to ctx of proc
-            // LET <name> == <expr> IN LET <newstate> == { <setMember> } IN <rest>
-            proc = ctx.withFreshStateName( newStateName =>
-              List(
-                IR.Node.Let(
-                  name = dcalLet.name,
-                  binding = generateExpression(dcalLet.expression),
-                  body = List(
-                    // LET _state2 == { l1 }
-                    IR.Node.Let(
-                      name = newStateName, // _state2
-                      binding = List(
-                        IR.Node.Uninterpreted("{ "),
-                        IR.Node.Name(setMember), // l1
-                        IR.Node.Uninterpreted(" }")
-                      ),
-                      body = ctx
-                        .withNameInfo(setMember, NameInfo.Local)
-                        .withNameInfo(dcalLet.name, NameInfo.Local)
-                        .withFreshStateName( newStateName =>
-                          generateStatements(rest)
-                        )
+            proc = ctx
+              .withMapFilterOnSetInfo(setMember, List(IR.Node.Name(ctx.stateName)))
+              .withFreshStateName( newStateName =>
+                List(
+                  IR.Node.Let(
+                    name = dcalLet.name,
+                    binding = generateExpression(dcalLet.expression),
+                    body = List(
+                      IR.Node.Let(
+                        name = newStateName,
+                        binding = List(
+                          IR.Node.Uninterpreted("{ "),
+                          IR.Node.Name(setMember),
+                          IR.Node.Uninterpreted(" }")
+                        ),
+                        body = generateStatements(rest)(using ctx
+                          .withNameInfo(setMember, NameInfo.Local)
+                          .withNameInfo(dcalLet.name, NameInfo.Local))
+                      )
                     )
                   )
-                )
               )
             )
           )
@@ -314,16 +296,17 @@ object IRBuilder {
         val outerSetMember = freshLocal
 
         def generateInnerProc(using Context): List[IR.Node] =
-          val newState = freshState
-          List(
-            IR.Node.Let(
-              name = newState,
-              binding = List(
-                IR.Node.Uninterpreted("{ "),
-                IR.Node.Name(outerSetMember),
-                IR.Node.Uninterpreted(" }")
-              ),
-              body = generateStatements(rest)(using ctx.withStateName(newState))
+          ctx.withFreshStateName( newStateName =>
+            List(
+              IR.Node.Let(
+                name = newStateName,
+                binding = List(
+                  IR.Node.Uninterpreted("{ "),
+                  IR.Node.Name(outerSetMember),
+                  IR.Node.Uninterpreted(" }")
+                ),
+                body = generateStatements(rest)
+              )
             )
           )
 
@@ -401,10 +384,33 @@ object IRBuilder {
     dcalStmts match {
       case Nil => List(IR.Node.Name(ctx.stateName))
       case s::ss =>
+        var sInTla: List[IR.Node] = Nil
         s match {
           case await @ Await(_) =>
-            val sInTla = generateAwait(await)
-            ctx.withFreshStateName( newStateName =>
+            sInTla = generateAwait(await)
+          case assignPairs @ AssignPairs(_) =>
+            sInTla = generateAssignPairs(assignPairs)
+          case let @ Let(_, _, _) =>
+            sInTla = generateLet(let, ss)
+          case `var` @ Var(_, _) =>
+            sInTla = generateVar(`var`)
+          case ifThenElse @ IfThenElse(_, _, _) =>
+            sInTla = generateIfThenElse(ifThenElse)
+        }
+        s match
+          case Let(_, _, _) => sInTla
+          case Var(name, _) =>
+            ctx.withFreshStateName(newStateName =>
+              List(
+                IR.Node.Let(
+                  name = newStateName,
+                  binding = sInTla,
+                  body = generateStatements(ss)(using ctx.withNameInfo(name, NameInfo.State))
+                )
+              )
+            )
+          case _ =>
+            ctx.withFreshStateName(newStateName =>
               List(
                 IR.Node.Let(
                   name = newStateName,
@@ -413,55 +419,6 @@ object IRBuilder {
                 )
               )
             )
-          case assignPairs @ AssignPairs(_) =>
-            val sInTla = generateAssignPairs(assignPairs)
-            ctx.withFreshStateName( newStateName =>
-              List(
-                IR.Node.Let(
-                  name = newStateName,
-                  binding = sInTla,
-                  body = generateStatements(ss)
-                )
-              )
-            )
-          case let @ Let(_, _, _) =>
-            val sInTla = generateLet(let, ss)
-            ctx.withFreshStateName( newStateName =>
-              List(
-                IR.Node.Let(
-                  name = newStateName,
-                  binding = sInTla,
-                  body = List(IR.Node.Name(newStateName))
-                )
-              )
-            )
-            //            val newState = freshState
-            //            List(
-            //              IR.Node.Let(
-            //                name = newState,
-            //                binding = generateLet(let, ss)(using ctx),
-            //                body = List(IR.Node.Name(newState))
-            //              )
-            //            )
-          case `var` @ Var(name, _) =>
-            val newState = freshState
-            List(
-              IR.Node.Let(
-                name = newState,
-                binding = generateVar(`var`),
-                body = generateStatements(ss)(using ctx.withNameInfo(name, NameInfo.State).withStateName(newState))
-              )
-            )
-          case ifThenElse @ IfThenElse(_, _, _) =>
-            val newState = freshState
-            List(
-              IR.Node.Let(
-                name = newState,
-                binding = generateIfThenElse(ifThenElse)(using ctx),
-                body = generateStatements(ss)(using ctx.withStateName(newState))
-              )
-            )
-        }
     }
   }
 
@@ -495,7 +452,6 @@ object IRBuilder {
 
   def generateDefinition(dcalDef: DCalAST.Definition): IR.Definition = {
     lc = 1
-    sc = 1
     ac = 1
     var initialCtx = Context(
       nameInfoOf = Map[String, NameInfo](
@@ -505,7 +461,7 @@ object IRBuilder {
         "i" -> NameInfo.State,
         "set" -> NameInfo.State
       ),
-      stateName = freshState,
+      stateName = "_state1",
       rootsAndCounters = Map[String, Int]("_state" -> 2)
     )
 
@@ -524,7 +480,6 @@ object IRBuilder {
 
   def generateDefinition(dcalImport: String): IR.Definition = {
     lc = 1
-    sc = 1
     ac = 1
     ???
   }
