@@ -29,6 +29,7 @@
 //> using dep com.github.scopt::scopt:4.1.0
 
 //> using test.dep org.scalameta::munit:1.1.0
+//> using dep edu.berkeley.cs.jqf:jqf-fuzz:2.0
 
 //> using javaProp distcompiler.Node.assertErrorRefCorrectness=no
 
