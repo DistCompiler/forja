@@ -16,8 +16,9 @@ package forja.langs.tla
 
 import forja.*
 import forja.source.{Source, SourceRange}
+import forja.test.WithTLACorpus
 
-class TLAParserTests extends munit.FunSuite, test.WithTLACorpus:
+class TLAParserTests extends munit.FunSuite, WithTLACorpus:
   self =>
 
   /* TODO: skip the TLAPS files; parsing that seems like a waste of time for
@@ -37,6 +38,7 @@ class TLAParserTests extends munit.FunSuite, test.WithTLACorpus:
       // )
       // , tracer = Manip.RewriteDebugTracer(os.pwd / "dbg_passes")
     )
+    ExprParser(top)
 
     // re-enable if interesting:
     // val folder = os.SubPath(file.subRelativeTo(clonesDir).segments.init)

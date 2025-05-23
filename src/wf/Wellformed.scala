@@ -166,11 +166,9 @@ final class Wellformed private (
             done:
               val wrongSize = parent.children.size
               parent.children = List(
-                Node(Builtin.Error)(
-                  Builtin.Error.Message(
-                    s"$desc should have exactly ${fields.size} children, but it had $wrongSize instead",
-                  ),
-                  Builtin.Error.AST(parent.unparentedChildren),
+                Builtin.Error(
+                  s"$desc should have exactly ${fields.size} children, but it had $wrongSize instead",
+                  parent.unparentedChildren.toSeq*,
                 ),
               )
           else
@@ -206,11 +204,9 @@ final class Wellformed private (
             done:
               val wrongSize = parent.children.size
               parent.children = List(
-                Node(Builtin.Error)(
-                  Builtin.Error.Message(
-                    s"$desc should have at least $minCount children, but it had $wrongSize instead",
-                  ),
-                  Builtin.Error.AST(parent.unparentedChildren),
+                Builtin.Error(
+                  s"$desc should have at least $minCount children, but it had $wrongSize instead",
+                  parent.unparentedChildren.toSeq*,
                 ),
               )
           else
@@ -531,6 +527,15 @@ object Wellformed:
               s"$token's shape is not appropriate for adding cases ($shape)",
             )
 
+      def deleteShape(): Unit =
+        token match
+          case Node.Top =>
+            require(topShapeOpt.nonEmpty)
+            topShapeOpt = None
+          case token: Token =>
+            require(assigns.contains(token))
+            assigns.remove(token)
+
       def importFrom(wf2: Wellformed): Unit =
         def fillFromShape(shape: Shape): Unit =
           shape match
@@ -557,6 +562,7 @@ object Wellformed:
             topShapeOpt = Some(wf2.topShape)
             fillFromShape(wf2.topShape)
           case token: Token => fillFromTokenOrEmbed(token)
+      end importFrom
 
     private[forja] def build(): Wellformed =
       require(topShapeOpt.nonEmpty)

@@ -18,7 +18,7 @@ import cats.syntax.all.given
 
 object Builtin:
   object Error extends Token:
-    def apply(msg: String, ast: Node.Child): Node =
+    def apply(msg: String, ast: Node.Child*): Node =
       Error(
         Error.Message().at(msg),
         Error.AST(ast),

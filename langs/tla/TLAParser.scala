@@ -177,6 +177,72 @@ object TLAParser extends PassSeq:
       ).void
 
     nodeSpanMatchedBy(impl).map(RawExpression.apply)
+  end rawExpression
+
+  def rawConjunction(col: Integer): SeqPattern[RawExpression] =
+    val simpleCases: SeqPattern[Unit] =
+      anyChild.void <* not(
+        tok(expressionDelimiters*)
+          | tok(defns./\).filter(node =>
+            val s = node.sourceRange
+            s.source.lines.lineColAtOffset(s.offset)._2 > col,
+          )
+          // stop at operator definitions: all valid patterns leading to == here
+          | operatorDefnBeginnings,
+      )
+
+    lazy val quantifierBound: SeqPattern[EmptyTuple] =
+      skip(
+        tok(TupleGroup).as(EmptyTuple)
+          | repeatedSepBy1(`,`)(Alpha),
+      )
+        ~ skip(defns.`\\in`)
+        ~ skip(defer(impl))
+        ~ trailing
+
+    lazy val quantifierBounds: SeqPattern[Unit] =
+      repeatedSepBy1(`,`)(quantifierBound).void
+
+    lazy val forallExists: SeqPattern[EmptyTuple] =
+      skip(
+        tok(LaTexLike).src("\\A") | tok(LaTexLike).src("\\AA") | tok(LaTexLike)
+          .src("\\E") | tok(LaTexLike).src("\\EE"),
+      )
+        ~ skip(quantifierBounds | repeatedSepBy1(`,`)(Alpha))
+        ~ skip(`:`)
+        ~ trailing
+
+    lazy val choose: SeqPattern[EmptyTuple] =
+      skip(defns.CHOOSE)
+        ~ skip(quantifierBound | repeatedSepBy1(`,`)(Alpha))
+        ~ skip(`:`)
+        ~ trailing
+
+    lazy val lambda: SeqPattern[EmptyTuple] =
+      skip(defns.LAMBDA)
+        ~ skip(repeatedSepBy1(`,`)(Alpha))
+        ~ skip(`:`)
+        ~ trailing
+
+    // this is an over-approximation of what can show up
+    // in an identifier prefix
+    // TODO: why does the grammar make it look like it goes the other way round?
+    lazy val idFrag: SeqPattern[EmptyTuple] =
+      skip(`!`)
+        ~ skip(`:`)
+        ~ trailing
+
+    lazy val impl: SeqPattern[Unit] =
+      repeated1(
+        forallExists
+          | choose
+          | lambda
+          | idFrag
+          | simpleCases, // last, otherwise it eats parts of the above
+      ).void
+
+    nodeSpanMatchedBy(impl).map(RawExpression.apply)
+  end rawConjunction
 
   val proofDelimiters: Seq[Token] = Seq(
     defns.ASSUME,
@@ -715,66 +781,3 @@ object TLAParser extends PassSeq:
             ~ trailing,
         ).rewrite: (local, op) =>
           splice(lang.Local(op.unparent()).like(local))
-
-  // TODO: finish expression parsing
-  // val buildExpressions = passDef:
-  //   wellformed := prevWellformed.makeDerived:
-  //     val removedCases = Seq(
-  //       TLAReader.StringLiteral,
-  //       TLAReader.NumberLiteral,
-  //       TLAReader.TupleGroup,
-  //     )
-  //     lang.Module.Defns.removeCases(removedCases*)
-  //     lang.Module.Defns.addCases(lang.Expr)
-  //     TLAReader.groupTokens.foreach: tok =>
-  //       tok.removeCases(removedCases*)
-  //       tok.addCases(lang.Expr)
-
-  //     lang.Expr.importFrom(tla.wellformed)
-  //     lang.Expr.addCases(lang.TmpGroupExpr)
-
-  //     lang.TmpGroupExpr ::= lang.Expr
-
-  //   pass(once = false, strategy = pass.bottomUp)
-  //     .rules:
-  //       on(
-  //         TLAReader.StringLiteral
-  //       ).rewrite: lit =>
-  //         splice(lang.Expr(lang.Expr.StringLiteral().like(lit)))
-  //       | on(
-  //         TLAReader.NumberLiteral
-  //       ).rewrite: lit =>
-  //         splice(lang.Expr(lang.Expr.NumberLiteral().like(lit)))
-  //       | on(
-  //         field(TLAReader.Alpha)
-  //         ~ field(
-  //           tok(TLAReader.ParenthesesGroup) *> children(
-  //             repeatedSepBy(`,`)(lang.Expr)
-  //           )
-  //         )
-  //         ~ trailing
-  //       ).rewrite: (name, params) =>
-  //         splice(lang.Expr(lang.Expr.OpCall(
-  //           lang.Id().like(name),
-  //           lang.Expr.OpCall.Params(params.iterator.map(_.unparent())),
-  //         )))
-  //       | on(
-  //         TLAReader.Alpha
-  //       ).rewrite: name =>
-  //         splice(lang.Expr(lang.Expr.OpCall(
-  //           lang.Id().like(name),
-  //           lang.Expr.OpCall.Params(),
-  //         )))
-  //       | on(
-  //         tok(TLAReader.ParenthesesGroup) *> onlyChild(lang.Expr)
-  //       ).rewrite: expr =>
-  /* // mark this group as an expression, but leave evidence that it is a group
-   * (for operator precedence handling) */
-  //         splice(lang.Expr(lang.TmpGroupExpr(expr.unparent())))
-  //       | on(
-  //         tok(TLAReader.TupleGroup).product(children(
-  //           field(repeatedSepBy(`,`)(lang.Expr))
-  //           ~ eof
-  //         ))
-  //       ).rewrite: (lit, elems) =>
-  //         splice(lang.Expr(lang.Expr.TupleLiteral(elems.iterator.map(_.unparent()))))

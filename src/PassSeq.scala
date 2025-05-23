@@ -24,15 +24,16 @@ import scala.collection.mutable
 transparent trait PassSeq:
   def inputWellformed: Wellformed
   final def outputWellformed: Wellformed =
-    assert(entriesSealed)
+    allPasses // compute allPasses, needed to enforce complete initialization
     entries.last.wellformed
 
   private val entries = mutable.ListBuffer.empty[PassSeq.Entry]
   private var entriesSealed = false
 
   protected def prevWellformed(using BuildCtx): Wellformed =
-    require(entries.nonEmpty, "there is no previous Wellformed")
-    entries.last.wellformed
+    if entries.isEmpty
+    then inputWellformed
+    else entries.last.wellformed
 
   protected object wellformed:
     def :=(using ctx: BuildCtx)(wellformed: Wellformed): Unit =
