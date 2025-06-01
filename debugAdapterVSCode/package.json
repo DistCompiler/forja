@@ -35,10 +35,9 @@
         "initialConfigurations": [
           {
             "type": "dcal",
+            "name": "dcal",
             "request": "attach",
-            "name": "DCal DSL",
-            "stopOnEntry": true,
-            "port": 4711
+            "debugServer": 4711
           }
         ]
       }

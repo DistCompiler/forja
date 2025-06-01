@@ -5,9 +5,9 @@ Follow these steps to setup and test the project:
 1. **Clone the Repository**  
    Clone this repository to your local machine:
 
-```bash
-git clone <https://github.com/DistCompiler/forja.git>
-```
+   ```bash
+   git clone <https://github.com/DistCompiler/forja.git>
+   ```
 
 2. **Install Scala CLI:**
    Install Scala CLI using the using this [link](https://scala-cli.virtuslab.org/install/)
@@ -17,19 +17,33 @@ git clone <https://github.com/DistCompiler/forja.git>
 4. **Verify Installation:**
    After installation, close and reopen your terminal, then verify Scala CLI is installed by running:
 
-```bash
-scala-cli version
-```
+   ```bash
+   scala-cli version
+   ```
 
 5. **Run Tests:**
    After veryifying installation, build and run the tests using:
 
-```bash
-scala-cli test .
-```
+   ```bash
+   scala-cli test .
+   ```
 
-6. **Debugging:**
-   Use the debug adapter for troubleshooting and debugging. Refer to the documentation for setup and usage instructions.
+6. **Source formatting:**
+   When contributing, make sure you've formatted your code.
+   This is checked by CI.
+
+   I recommend committing your work, then running the formatters to see the formatting diff.
+   You can then commit with `--amend` to replace your commit if you're happy with what the formatters did.
+
+   Run all the formatting scripts with:
+   ```bash
+   scala-cli run . --main-class scripts.rewrite_src_sc
+   ```
+
+   As a convenience, you can also use `./rewrite_src.sh`, which is a one line shell script that launches the above command.
+
+7. **Debugging:**
+   You can try to use the debug adapter for troubleshooting and debugging. Refer to the documentation for setup and usage instructions.
 
 # Forja Compiler Toolkit
 

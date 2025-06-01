@@ -18,17 +18,19 @@ Defines all of the ```Token``` types that are used and provides a wellformed def
 ```CalcReader``` is the lexer that converts input strings into tokens. 
 
 It contains a wellformed definition of the initial token types with ```Number``` tokens that're wrapped around ```Expression``` and ```Op``` tokens for operations.
+To support arithmetic grouping, `()` are matched as nested `Group` tokens, which is used by the parser to force precedences not implied by the operators (like most programming language parsers).
 
-The ```rules``` method uses byte-level pattern matching to create tokens for numbers and operators and skip anything else.
-
+The ```rules``` method uses byte-level pattern matching to create tokens for numbers and operators, skipping whitespace and flagging unrecognized bytes as invalid.
 
 ### 3. ```CalcParser.scala```
 ```CalcParser``` is the parser, transforming the flat list of tokens into a structured AST.
 
 The wellformed definition adds new ```Operation``` token types that have 2 ```Expression``` children. Also, ```Expression``` tokens have a new definition, being able to wrap both ```Number``` tokens as well as ```Operation``` tokens.
 
-```mulDivPass``` and ```addSubPass``` both create nested expressions and splicing the old ```Op``` tokens that were previously defined. Both methods do this by pattern matching on the sequence of ```(Expression, Op, Expression)``` and replacing this sequence with
+The passes are a sequence of transformations defined in the `passes` field, in this consisting of 2 binary operation parsing passes, and 2 passes related to `Group` tokens, which represent grouping with `()`.
 
+First, the `GroupIsExpression` pass makes `Group` nodes into `Expression` nodes, so that arithmetic operator parsing treats them as already parsed objects.
+Then, ```MulDivPass``` and ```AddSubPass``` both create nested expressions, replacing instances of `Expression Op Expression` with a single `Expression` node that looks like this:
 ```
 Expression(
   Operation(
@@ -38,38 +40,26 @@ Expression(
 )
 ```
 
-```mulDivPass``` is executed before ```addSubPass``` to create precedence, allowing multiplication and division operations to be nested deeper than addition and subtraction operations in the AST. 
+```MulDivPass``` is executed before ```AddSubPass``` to create precedence, allowing multiplication and division operations to be nested deeper than addition and subtraction operations in the AST.
 
+Finally, the `StripGroups` pass removes nested `Expression(Group(Expression(...)))` objects, replacing them with the innermost `Expression`.
+This is the only valid case, where the group could be parsed as a single nested expression.
+In cases where there is a group but the nested expression could not be parsed (or there was no nested expression, as in the text `( )`), we could add extra rules to perform custom error reporting.
+Interestingly, unlike in other parsing methods, this rule will have easy idiomatic access to both the incomplete parse, and the surrounding `()` context.
+With the right rules, this can enable rich error reporting.
 
 ### 4. ```CalcEvaluator.scala```
 ```CalcEvaluator``` simplifies the AST and computes the value of the arithmetic expression.
 
 The wellformed definition is imported from ```package.scala```, picking up with the AST structure of where ```CalcParser``` left off.
-
-```simplifyPass``` splices all expressions repeatedly until there's only a single expression node at the top of the AST structure. The pass uses a bottom-up strategy to begin with simplifying the base-case expressions with no nesting as it goes up the AST. 
-
-The pass sequence pattern matches on
-
-```
-Expression(
-    Operation(
-        Expression(
-            Number
-        ),
-        Expression(
-            Number
-        )
-    )
-)
-```
-
-and replaces the sequence with ```Expression(Number)```. The remaining ```Expression``` token at the end of the pass contains the value of arithmetic expression.
-
-```removeLayerPass``` splices the ```Expression``` token at the top of the AST and replaces it with the ```Number``` token that was wrapped inside. Pattern matching is done on the sequence of ```Expression(Number)``` and replaces it with just ```Number```.
+Each pass is annotated with its own input / output grammars, expressed as changes to the previous pass's output grammar.
+- `ConstantsPass` converts each number to a native Scala `Int` for easier arithmetic, showing an example of the `Node.Embed` feature.
+- `EvaluatorPass` is a ruleset that describes basic arithmetic evaluation, which will fold a wellformed tree into a single node of the form `Expression(Node.Embed[Int](???))`.
+- `StripExpressionPass` simply cleans up the previous pass's tree, leaving just `Node.Embed[Int](???)` containing the result of evaluating the expression.
 
 
 ## Usage
-To learn how to use the calculator, ```CalcReader.test.scala``` contains methods (```parse```, ```read```, ```evaluate```) that execute the different components of the calculator.
+To learn how to use the calculator, ```package.test.scala``` contains methods (```parse```, ```read```, ```evaluate```) that execute the different components of the calculator.
 
 
 ## Example

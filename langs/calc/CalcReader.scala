@@ -30,19 +30,22 @@ object CalcReader extends Reader:
   object SubOp extends Token, Token.ShowSource
   object MulOp extends Token, Token.ShowSource
   object DivOp extends Token, Token.ShowSource
+  object Group extends Token
 
   override lazy val wellformed = Wellformed:
-    Node.Top ::= repeated(choice(Expression, AddOp, SubOp, MulOp, DivOp))
+    val content =
+      repeated(choice(Expression, AddOp, SubOp, MulOp, DivOp, Group))
+    Node.Top ::= content
 
     Number ::= Atom
     AddOp ::= Atom
     SubOp ::= Atom
     MulOp ::= Atom
     DivOp ::= Atom
+    Group ::= content
 
-    Expression ::= fields(
-      Number,
-    )
+    Expression ::= choice(Number)
+  end wellformed
 
   private val digit: Set[Char] = ('0' to '9').toSet
   private val whitespace: Set[Char] = Set(' ', '\n', '\t')
@@ -61,17 +64,31 @@ object CalcReader extends Reader:
         .onOneOf(digit):
           numberMode
         .on('+'):
-          addChild(AddOp())
-            *> rules
+          consumeMatch: m =>
+            addChild(AddOp(m))
+              *> rules
         .on('-'):
-          addChild(SubOp())
-            *> rules
+          consumeMatch: m =>
+            addChild(SubOp(m))
+              *> rules
         .on('*'):
-          addChild(MulOp())
-            *> rules
+          consumeMatch: m =>
+            addChild(MulOp(m))
+              *> rules
         .on('/'):
-          addChild(DivOp())
-            *> rules
+          consumeMatch: m =>
+            addChild(DivOp(m))
+              *> rules
+        .on('('):
+          consumeMatch: m =>
+            addChild(Group(m))
+              *> atFirstChild(rules)
+        .on(')'):
+          extendThisNodeWithMatch:
+            atParent(rules)
+            | consumeMatch: m =>
+              addChild(Error("unexpected end of group", SourceMarker(m)))
+                *> rules
         .fallback:
           bytes.selectOne:
             consumeMatch: m =>

@@ -27,41 +27,40 @@ object CalcParser extends PassSeq:
   import Reader.*
   import CalcReader.*
 
-  def inputWellformed: Wellformed =
-    CalcReader.wellformed.makeDerived:
-      Add ::= fields(
-        Expression,
-        Expression,
-      )
+  lazy val passes = List(
+    GroupIsExpression,
+    MulDivPass,
+    AddSubPass,
+    StripGroups,
+  )
 
-      Sub ::= fields(
-        Expression,
-        Expression,
-      )
+  def inputWellformed: Wellformed = CalcReader.wellformed
 
+  object GroupIsExpression extends Pass:
+    val wellformed = prevWellformed.makeDerived:
+      Node.Top.removeCases(Group)
+      Expression.addCases(Group)
+    val rules = pass(strategy = pass.bottomUp, once = true)
+      .rules:
+        on(tok(Group)).rewrite: group =>
+          splice(Expression(group.unparent()))
+  end GroupIsExpression
+
+  object MulDivPass extends Pass:
+    val wellformed = prevWellformed.makeDerived:
+      Node.Top.removeCases(MulOp, DivOp)
+      Group.removeCases(MulOp, DivOp)
+      Expression.addCases(Mul, Div)
       Mul ::= fields(
         Expression,
         Expression,
       )
-
       Div ::= fields(
         Expression,
         Expression,
       )
-
-      Expression ::=! choice(
-        Number,
-        Add,
-        Sub,
-        Mul,
-        Div,
-      )
-
-  private val mulDivPass = passDef:
-    wellformed := inputWellformed.makeDerived:
-      Node.Top ::=! repeated(choice(Expression, AddOp, SubOp))
-
-    pass(once = false, strategy = pass.topDown)
+    end wellformed
+    val rules = pass(once = false, strategy = pass.topDown)
       .rules:
         on(
           field(tok(Expression))
@@ -91,12 +90,23 @@ object CalcParser extends PassSeq:
               ),
             ),
           )
+    end rules
+  end MulDivPass
 
-  private val addSubPass = passDef:
-    wellformed := prevWellformed.makeDerived:
-      Node.Top ::=! repeated(Expression)
-
-    pass(once = false, strategy = pass.topDown)
+  object AddSubPass extends Pass:
+    val wellformed = prevWellformed.makeDerived:
+      Node.Top.removeCases(AddOp, SubOp)
+      Expression.addCases(Add, Sub)
+      Add ::= fields(
+        Expression,
+        Expression,
+      )
+      Sub ::= fields(
+        Expression,
+        Expression,
+      )
+    end wellformed
+    val rules = pass(once = false, strategy = pass.topDown)
       .rules:
         on(
           field(tok(Expression))
@@ -126,3 +136,19 @@ object CalcParser extends PassSeq:
               ),
             ),
           )
+    end rules
+  end AddSubPass
+
+  object StripGroups extends Pass:
+    val wellformed = prevWellformed.makeDerived:
+      Expression.removeCases(Group)
+    val rules = pass(strategy = pass.bottomUp, once = true)
+      .rules:
+        on(
+          tok(Expression) *> onlyChild:
+            tok(Group) *> onlyChild:
+              tok(Expression),
+        ).rewrite: expr =>
+          splice(expr.unparent())
+  end StripGroups
+end CalcParser

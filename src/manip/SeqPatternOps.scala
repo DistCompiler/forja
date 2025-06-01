@@ -184,6 +184,11 @@ trait SeqPatternOps:
   def lastChild[T](using DebugInfo)(pattern: SeqPattern[T]): SeqPattern[T] =
     refine(atLastChild(on(pattern).value))
 
+  def embed[T: EmbedMeta](using DebugInfo): SeqPattern[T] =
+    anyChild.restrict:
+      case embed @ Node.Embed(t) if embed.meta == EmbedMeta[T] =>
+        t.asInstanceOf[T]
+
   extension [P <: Node.Parent](parentPattern: SeqPattern[P])
     def withChildren[T](using
         DebugInfo,

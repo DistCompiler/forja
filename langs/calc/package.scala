@@ -43,32 +43,28 @@ object lang extends WellformedDef:
           Expression,
           Expression,
         ),
-      ),
-        Token.ShowSource
+      )
   object Sub
       extends t(
         fields(
           Expression,
           Expression,
         ),
-      ),
-        Token.ShowSource
+      )
   object Mul
       extends t(
         fields(
           Expression,
           Expression,
         ),
-      ),
-        Token.ShowSource
+      )
   object Div
       extends t(
         fields(
           Expression,
           Expression,
         ),
-      ),
-        Token.ShowSource
+      )
 
 object read:
   def fromSourceRange(sourceRange: SourceRange): Node.Top =

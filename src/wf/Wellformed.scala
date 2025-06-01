@@ -145,9 +145,22 @@ final class Wellformed private (
       case token: Token => assigns(token)
       case Node.Top     => topShape
 
+  /** Manip version of [[this.markErrors]], which gets the current node and
+    * applies the method to it.
+    */
   lazy val markErrorsPass: Manip[Unit] =
     getNode.tapEffect(markErrors).void
 
+  /** Traverses the entire tree, asserting this Wellformed and replacing
+    * incorrect nodes with [[forja.Builtin.Error]] nodes.
+    *
+    * The generated errors have a [[forja.Builtin.Error.Message]] describing
+    * what went wrong, and a [[forja.Builtin.Error.AST]] whose subtrees are the
+    * 0 or more offending nodes. Existing errors (that is, subtrees of a node
+    * with token [[forja.Builtin.Error]], even if they were not created by this
+    * method) will be skipped, since they will necessarily contain
+    * non-conforming trees.
+    */
   def markErrors(node: Node.All): Unit =
     def implShape(
         desc: String,
@@ -241,6 +254,17 @@ final class Wellformed private (
 
     implForNode(node).result
 
+  /** Derives a new Wellformed based on this one via the mutations defined in
+    * fn.
+    *
+    * Creates a new [[forja.wf.Wellformed.Builder]] pre-filled with the same
+    * definitions as the existing one. The transformations in fn are applied to
+    * it, adding/removing/replacing definitions. With those changes made, a new
+    * immutable Wellformed instance is constructed and returned.
+    *
+    * Use this method in any case where you want "something like that but with a
+    * few changes", rather than a completely new set of definitions.
+    */
   def makeDerived(fn: Wellformed.Builder ?=> Unit): Wellformed =
     val builder =
       Wellformed.Builder(mutable.HashMap.from(assigns), Some(topShape))
@@ -517,7 +541,7 @@ object Wellformed:
           /* maybe it helps to assert something here, but it is technically
            * correct to just do nothing */
 
-      def addCases(cases: Token*): Unit =
+      def addCases(cases: (Token | EmbedMeta[?])*): Unit =
         existingShape match
           case Shape.Choice(choices) =>
             token ::=! Shape.Choice(choices ++ cases)
