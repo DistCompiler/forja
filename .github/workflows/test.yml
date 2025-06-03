@@ -17,3 +17,7 @@ jobs:
         with:
           jvm: ${{ matrix.jvm }}
       - run: scala-cli test .
+      - name: "Check: formatter script shouldn't create a diff on clean tree"
+        run: |
+          scala-cli run . --main-class scripts.rewrite_src_sc
+          [ -n "$(git status --porcelain)" ]
