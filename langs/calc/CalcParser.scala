@@ -96,6 +96,7 @@ object CalcParser extends PassSeq:
   object AddSubPass extends Pass:
     val wellformed = prevWellformed.makeDerived:
       Node.Top.removeCases(AddOp, SubOp)
+      Group.removeCases(AddOp, SubOp)
       Expression.addCases(Add, Sub)
       Add ::= fields(
         Expression,
