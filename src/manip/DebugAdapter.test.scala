@@ -26,8 +26,12 @@ import scala.collection.mutable
 import scala.compiletime.uninitialized
 
 class DebugAdapterTests extends munit.FunSuite:
-  case class DAPMessage(messageType: String, content: String, timestamp: Long = System.currentTimeMillis())
-  
+  case class DAPMessage(
+      messageType: String,
+      content: String,
+      timestamp: Long = System.currentTimeMillis(),
+  )
+
   class DAPClient(host: String, port: Int) extends AutoCloseable:
     private val socket: Socket = Socket()
     private var seqNum = 1
@@ -38,19 +42,23 @@ class DebugAdapterTests extends munit.FunSuite:
     def connect(): Unit =
       socket.connect(InetSocketAddress(host, port), 5000)
       running = true
-      readerThread = new Thread(() => {
-        try {
-          while (running && !socket.isClosed) {
-            val msg = readResponse()
-            asyncQueue.put(msg)
-          }
-        } catch {
-          case _: java.io.EOFException | _: java.net.SocketTimeoutException | _: ujson.IncompleteParseException =>
+      readerThread = new Thread(
+        () => {
+          try {
+            while (running && !socket.isClosed) {
+              val msg = readResponse()
+              asyncQueue.put(msg)
+            }
+          } catch {
+            case _: java.io.EOFException | _: java.net.SocketTimeoutException |
+                _: ujson.IncompleteParseException =>
             // Normal shutdown
-          case ex: Exception =>
-            println(s"[DAPClient] Reader thread exception: $ex")
-        }
-      }, "dap-client-reader")
+            case ex: Exception =>
+              println(s"[DAPClient] Reader thread exception: $ex")
+          }
+        },
+        "dap-client-reader",
+      )
       readerThread.setDaemon(true)
       readerThread.start()
 
@@ -64,7 +72,7 @@ class DebugAdapterTests extends munit.FunSuite:
         "seq" -> seqNum,
         "type" -> "request",
         "command" -> command,
-        "arguments" -> args
+        "arguments" -> args,
       )
       val payloadBytes = ujson.writeToByteArray(requestObj)
       socket.getOutputStream.write(
@@ -95,10 +103,14 @@ class DebugAdapterTests extends munit.FunSuite:
           // If nothing was read, treat as normal shutdown, not a protocol error
           socket.close()
           if buffer.isEmpty then
-            throw new java.io.EOFException("Socket closed while reading headers (empty buffer)")
+            throw new java.io.EOFException(
+              "Socket closed while reading headers (empty buffer)",
+            )
           else
             // Only fail if there was partial, non-header data
-            fail("Socket closed with partial, non-header data: " + buffer.toString)
+            fail(
+              "Socket closed with partial, non-header data: " + buffer.toString,
+            )
         val char = read.toChar
         buffer.append(char)
         if buffer.toString.endsWith("\r\n\r\n") then
@@ -142,28 +154,30 @@ class DebugAdapterTests extends munit.FunSuite:
     },
     teardown = { adapter =>
       adapter.close()
-    }
+    },
   )
 
   def createTestTLASource(): Source =
     val tlaContent = """
-      |---- MODULE TestModule ----
-      |EXTENDS Naturals
-      |
-      |VARIABLE x
-      |
-      |Init == x = 0
-      |
-      |Next == x' = x + 1
-      |
-      |Spec == Init /\ [][Next]_x
-      |
-      |====
+                       |---- MODULE TestModule ----
+                       |EXTENDS Naturals
+                       |
+                       |VARIABLE x
+                       |
+                       |Init == x = 0
+                       |
+                       |Next == x' = x + 1
+                       |
+                       |Spec == Init /\ [][Next]_x
+                       |
+                       |====
     """.stripMargin
-    
+
     Source.fromString(tlaContent)
 
-  debugAdapterFixture.test("handles Step Over request with actual compiler execution") { debugAdapter =>
+  debugAdapterFixture.test(
+    "handles Step Over request with actual compiler execution",
+  ) { debugAdapter =>
     val client = DAPClient("localhost", 4711)
     try {
       client.connect()
@@ -179,19 +193,28 @@ class DebugAdapterTests extends munit.FunSuite:
       compilerThread.start()
 
       // Send all requests up front, without blocking for responses
-      client.sendRequest("initialize", ujson.Obj(
-        "clientID" -> "test",
-        "adapterID" -> "forja"
-      ))
+      client.sendRequest(
+        "initialize",
+        ujson.Obj(
+          "clientID" -> "test",
+          "adapterID" -> "forja",
+        ),
+      )
       var messages = client.takeNMessages(1)
       assert(messages.nonEmpty, "Expected an initialize response")
-      assert(messages.exists(_.messageType == "response"), "Expected an initialize response")
+      assert(
+        messages.exists(_.messageType == "response"),
+        "Expected an initialize response",
+      )
       println(s"${messages(0).messageType}: ${messages(0).content}\n")
 
       client.sendRequest("attach")
       messages = client.takeNMessages(2)
       assert(messages.nonEmpty, "Expected an initialize response")
-      assert(messages.exists(_.messageType == "response"), "Expected an attach response")
+      assert(
+        messages.exists(_.messageType == "response"),
+        "Expected an attach response",
+      )
       println(s"${messages(0).messageType}: ${messages(0).content}")
       assert(messages.exists(_.messageType == "event"), "Expected a next event")
       println(s"${messages(1).messageType}: ${messages(1).content}\n")
@@ -199,11 +222,20 @@ class DebugAdapterTests extends munit.FunSuite:
       client.sendRequest("next", ujson.Obj("threadId" -> 1))
       messages = client.takeNMessages(3)
       assert(messages.nonEmpty, "Expected a next response")
-      assert(messages.exists(_.messageType == "response"), "Expected a next response")
+      assert(
+        messages.exists(_.messageType == "response"),
+        "Expected a next response",
+      )
       println(s"${messages(0).messageType}: ${messages(0).content}")
-      assert(messages.exists(_.messageType == "event"), "Expected a loadedSource event")
+      assert(
+        messages.exists(_.messageType == "event"),
+        "Expected a loadedSource event",
+      )
       println(s"${messages(1).messageType}: ${messages(1).content}")
-      assert(messages.exists(_.messageType == "event"), "Expected a stopped event")
+      assert(
+        messages.exists(_.messageType == "event"),
+        "Expected a stopped event",
+      )
       println(s"${messages(2).messageType}: ${messages(2).content}\n")
 
       client.sendRequest("continue", ujson.Obj("threadId" -> 1))
