@@ -14,14 +14,15 @@
 
 package forja.manip
 
-import forja.*
-import forja.source.{Source, SourceRange}
-import forja.dsl.*
-import forja.langs.tla.{TLAReader, TLAParser}
-
 import java.net.{InetSocketAddress, Socket}
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.LinkedBlockingQueue
+
+import forja.*
+import forja.dsl.*
+import forja.langs.tla.{TLAParser, TLAReader}
+import forja.source.{Source, SourceRange}
+
 import scala.collection.mutable
 import scala.compiletime.uninitialized
 
