@@ -25,7 +25,7 @@ final class SegmentedStack[T <: AnyRef](using NotGiven[Array[?] <:< T]):
   def consumeInReverse(fn: T => Unit): Unit =
     var idx = 0
     while base ne stack do
-      base(idx).nn match
+      base(idx) match
         case next: Array[AnyRef] if idx == 0 =>
           idx += 1 // back ref, skip
         case next: Array[AnyRef] if idx == base.length - 1 =>
@@ -37,7 +37,7 @@ final class SegmentedStack[T <: AnyRef](using NotGiven[Array[?] <:< T]):
     end while
 
     while idx < stackSize do
-      base(idx).nn match
+      base(idx) match
         case _: Array[AnyRef] if idx == 0 => // skip
         case elem =>
           fn(elem.asInstanceOf[T])

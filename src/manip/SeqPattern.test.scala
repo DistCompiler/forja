@@ -98,7 +98,7 @@ class SeqPatternTests extends munit.FunSuite:
     .onChildren("fields withChildren: missing parent")(tok2(tok2()))("no")
     .onChildren("fields withChildren: missing child")(tok1(tok1()))("no")
     .onChildren("fields parent: empty")()("no")
-  
+
   on(
     field(
       anyNode.withChildren:
@@ -112,7 +112,6 @@ class SeqPatternTests extends munit.FunSuite:
     .onChildren("fields parent: missing parent")(tok2(tok2()))("no")
     .onChildren("fields parent: missing child")(tok1(tok1()))("no")
     .onChildren("fields parent: empty")()("no")
-
 
   on(
     skip(anyNode)

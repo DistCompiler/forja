@@ -116,7 +116,7 @@ object Token:
          * is null, go around again. */
         sym = ref.get()
       end while
-      sym.nn
+      sym
   end TokenSym
 
   /** Helper trait that overrides [[forja.Token#showSource]] to return true.

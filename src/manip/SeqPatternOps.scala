@@ -177,10 +177,10 @@ trait SeqPatternOps:
 
   def parent[T](using DebugInfo)(pattern: SeqPattern[T]): SeqPattern[T] =
     refine(atParent(on(pattern).value))
-  
+
   def leftSibling[T](using DebugInfo)(pattern: SeqPattern[T]): SeqPattern[T] =
     refine(atLeftSibling(on(pattern).value))
-  
+
   def rightSibling[T](using DebugInfo)(pattern: SeqPattern[T]): SeqPattern[T] =
     refine(atRightSibling(on(pattern).value))
 
