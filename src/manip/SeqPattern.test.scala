@@ -85,6 +85,56 @@ class SeqPatternTests extends munit.FunSuite:
     .onChildren("fields skip: last missing")(tok1(), tok2())("no")
     .onChildren("fields skip: empty")()("no")
 
+  on(
+    field(
+      tok(tok1).withChildren:
+        field(tok(tok2))
+          ~ eof,
+    )
+      ~ eof
+      | SeqPattern.pure("no"),
+  )
+    .onChildren("fields withChildren: exact")(tok1(tok2()))(tok2())
+    .onChildren("fields withChildren: missing parent")(tok2(tok2()))("no")
+    .onChildren("fields withChildren: missing child")(tok1(tok1()))("no")
+    .onChildren("fields parent: empty")()("no")
+
+  on(
+    field(
+      anyNode.withChildren:
+        parent(tok(tok1)) *> field(tok(tok2))
+          ~ eof,
+    )
+      ~ eof
+      | SeqPattern.pure("no"),
+  )
+    .onChildren("fields parent: exact")(tok1(tok2()))(tok2())
+    .onChildren("fields parent: missing parent")(tok2(tok2()))("no")
+    .onChildren("fields parent: missing child")(tok1(tok1()))("no")
+    .onChildren("fields parent: empty")()("no")
+
+  on(
+    skip(anyNode)
+      ~ field(leftSibling(tok(tok1)) *> tok(tok2))
+      ~ eof
+      | SeqPattern.pure("no"),
+  )
+    .onChildren("fields leftSibling: exact")(tok1(), tok2())(tok2())
+    .onChildren("fields leftSibling: different left")(tok2(), tok2())("no")
+    .onChildren("fields leftSibling: different right")(tok1(), tok1())("no")
+    .onChildren("fields leftSibling: empty")()("no")
+
+  on(
+    field(rightSibling(tok(tok2)) *> tok(tok1))
+      ~ skip(anyNode)
+      ~ eof
+      | SeqPattern.pure("no"),
+  )
+    .onChildren("fields rightSibling: exact")(tok1(), tok2())(tok1())
+    .onChildren("fields rightSibling: different left")(tok2(), tok2())("no")
+    .onChildren("fields rightSibling: different right")(tok1(), tok1())("no")
+    .onChildren("fields rightSibling: empty")()("no")
+
 object PatternTests:
   object tok1 extends Token
   object tok2 extends Token

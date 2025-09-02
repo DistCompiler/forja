@@ -520,9 +520,9 @@ object Node:
       else throw NodeError("node already has a parent")
 
       if oldParent ne null
-      then oldParent.nn.assertErrorRefCounts()
+      then oldParent.assertErrorRefCounts()
       if parent ne null
-      then parent.nn.assertErrorRefCounts()
+      then parent.assertErrorRefCounts()
 
       this
 
@@ -538,7 +538,7 @@ object Node:
       _idxInParent = -1
 
       if safe && (oldParent ne null)
-      then oldParent.nn.assertErrorRefCounts()
+      then oldParent.assertErrorRefCounts()
 
       this
 
