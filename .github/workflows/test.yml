@@ -17,3 +17,7 @@ jobs:
         with:
           jvm: ${{ matrix.jvm }}
       - run: scala-cli test .
+      - name: "Run all formatters on a clean tree"
+        run: scala-cli run . --main-class scripts.rewrite_src_sc
+      - name: "Check: the tree did not change due to the formatters"
+        run: scala-cli run . --main-class scripts.check_no_diff_sc
