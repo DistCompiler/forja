@@ -29,10 +29,7 @@ object ExprMarker extends PassSeq:
   )
 
   object ExprTry extends Token
-  def inputWellformed: Wellformed = TLAParser.outputWellformed // .makeDerived:
-    // ExprTry ::= Atom
-    // TLAReader.groupTokens.foreach: tok =>
-    //     tok.addCases(ExprTry)
+  def inputWellformed: Wellformed = TLAParser.outputWellformed
 
   object buildExpressions extends Pass:
     val wellformed = prevWellformed.makeDerived:
@@ -46,7 +43,7 @@ object ExprMarker extends PassSeq:
         tok.removeCases(removedCases*)
         tok.addCases(lang.Expr)
 
-      //lang.Expr.deleteShape()
+      lang.Expr.deleteShape()
       lang.Expr.importFrom(lang.wf)
       lang.Expr.addCases(lang.Expr)
 

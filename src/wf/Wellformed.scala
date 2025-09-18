@@ -554,6 +554,15 @@ object Wellformed:
             throw IllegalArgumentException(
               s"$token's shape is not appropriate for adding cases ($shape)",
             )
+      
+      def deleteShape(): Unit =
+        token match
+          case Node.Top =>
+            require(topShapeOpt.nonEmpty)
+            topShapeOpt = None
+          case token: Token =>
+            require(assigns.contains(token))
+            assigns.remove(token)
 
       def importFrom(wf2: Wellformed): Unit =
         def fillFromShape(shape: Shape): Unit =
