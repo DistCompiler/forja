@@ -20,6 +20,7 @@ import forja.*
 import forja.dsl.*
 import forja.source.{Reader, SourceRange}
 import forja.wf.Wellformed
+import forja.langs.tla.ExprMarker.ExprTry
 
 object TLAReader extends Reader:
   lazy val groupTokens: List[Token] = List(
@@ -54,6 +55,8 @@ object TLAReader extends Reader:
         Comment,
         DashSeq,
         EqSeq,
+        //
+        ExprTry,
       )
         | choice(NonAlpha.instances.toSet)
         | choice(allOperators.toSet)
@@ -70,6 +73,7 @@ object TLAReader extends Reader:
     NumberLiteral ::= Atom
     Alpha ::= Atom
     LaTexLike ::= Atom
+    ExprTry ::= Atom
 
     StepMarker ::= fields(
       choice(StepMarker.Num, StepMarker.Plus, StepMarker.Star),

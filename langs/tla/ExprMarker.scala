@@ -91,12 +91,12 @@ object ExprMarker extends PassSeq:
               )
             ) 
           // If the braces group is not complete, mark the next element as ExprTry
-          // | on(
-          //     parent(tok(TLAReader.BracesGroup) *> rightSibling(ExprTry)) *>
-          //     field(lang.Expr)
-          //     ~ field(`,` *> rightSibling(not(ExprTry)))
-          //   ).rewrite: (expr, comma) =>
-          //     splice(expr, comma, ExprTry())
+          | on(
+              parent(tok(TLAReader.BracesGroup) *> rightSibling(ExprTry)) *>
+              field(lang.Expr)
+              ~ field(`,` *> rightSibling(not(ExprTry)))
+            ).rewrite: (expr, comma) =>
+              splice(expr, comma, ExprTry())
           // Expr has been parsed and ExprTry can be removed
           | on(
             skip(ExprTry)
