@@ -100,6 +100,7 @@ object lang extends WellformedDef:
           Expr.SetLiteral,
           Expr.TupleLiteral,
           Expr.RecordLiteral,
+          Expr.RecordSetLiteral,
           Expr.Project,
           Expr.OpCall,
           Expr.FnCall,
@@ -180,7 +181,8 @@ object lang extends WellformedDef:
           ),
         )
 
-    object Case extends t(repeated(Case.Branch, minCount = 1)):
+    object Case extends t(fields(Case.Branches, Case.Other)):
+      object Branches extends t(repeated(Branch, minCount = 1))
       object Branch
           extends t(
             fields(
@@ -188,6 +190,8 @@ object lang extends WellformedDef:
               Expr,
             ),
           )
+      object Other extends t(choice(Expr, None))
+      object None extends t(Atom)
     end Case
 
     object Let

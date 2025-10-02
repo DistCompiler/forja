@@ -124,6 +124,7 @@ object TLAReader extends Reader:
   case object `:` extends NonAlpha
   case object `::` extends NonAlpha
   case object `<-` extends NonAlpha
+  case object `->` extends NonAlpha
   case object `|->` extends NonAlpha
   case object `,` extends NonAlpha
   case object `.` extends NonAlpha

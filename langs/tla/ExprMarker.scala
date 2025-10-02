@@ -28,6 +28,25 @@ object ExprMarker extends PassSeq:
     buildExpressions,
   )
 
+// PART 1
+
+// HARD:
+// - identifiers
+// - opcalls
+// - prefix operators
+// - infix operators
+// - postfix operators
+
+// EASY:
+
+// - records
+// - "." operand
+// - tuples
+
+// - IF/THEN/ELSE
+// - LET
+
+
   object ExprTry extends Token
   def inputWellformed: Wellformed = TLAParser.outputWellformed
 
@@ -47,58 +66,138 @@ object ExprMarker extends PassSeq:
       lang.Expr.importFrom(lang.wf)
       lang.Expr.addCases(lang.Expr)
 
-
     val rules = 
       pass(once = false, strategy = pass.bottomUp)
         .rules:
-          // Number and String Literals can be parsed directly
+          // Parse Number and String literals
           on(
-            TLAReader.NumberLiteral,
+            leftSibling(ExprTry) *>
+              field(TLAReader.NumberLiteral)
+              ~ trailing
           ).rewrite: lit =>
             splice(lang.Expr(lang.Expr.NumberLiteral().like(lit)))
           | on(
-            TLAReader.StringLiteral,
+            leftSibling(ExprTry) *>
+              field(TLAReader.StringLiteral)
+              ~ trailing
           ).rewrite: lit =>
             splice(lang.Expr(lang.Expr.StringLiteral().like(lit)))
-          // Isolated Alpha can be parsed
+          // Braces Group is complete when all the elements are parsed
           | on(
-            skip(ExprTry)
-            ~ field(TLAReader.Alpha)
-            ~ eof
-          ).rewrite: id =>
-            splice(
-              lang.Expr(
-                lang.Expr.OpCall(
-                  lang.Id().like(id),
-                  lang.Expr.OpCall.Params(),
-                )
-              )
-            )
-          // Braces Group is complete when the elements are parsed
-          | on(
-              skip(ExprTry)
-              ~ field(
-                tok(TLAReader.BracesGroup) *>
+              leftSibling(ExprTry) *>
+                field(tok(TLAReader.BracesGroup) *>
                   children:
-                    field(repeatedSepBy(`,`)(lang.Expr))
+                    field(
+                      repeatedSepBy(`,`)(
+                        skip(ExprTry) 
+                        ~ field(lang.Expr)
+                        ~ trailing
+                      )
+                    )
                     ~ eof
-              )
-              ~ trailing
+                )
+                ~ trailing
           ).rewrite: exprs =>
             splice(
               lang.Expr(
                 lang.Expr.SetLiteral(exprs.iterator.map(_.unparent())),
               )
-            ) 
-          // If the braces group is not complete, mark the next element as ExprTry
+          )
+          // If the braces group is not complete, mark the elements with ExprTry
+          // Mark the first child in the first pass, and then mark the rest in the second
+          // TODO: I wonder if this pattern is a bad idea
+          | on(parent(leftSibling(ExprTry) *> tok(TLAReader.BracesGroup)) *>
+              not(leftSibling(anyNode)) *>
+              not(ExprTry) *> not(lang.Expr) *> anyNode
+          ).rewrite: first =>
+            splice(ExprTry(), first.unparent())
           | on(
-              parent(tok(TLAReader.BracesGroup) *> rightSibling(ExprTry)) *>
-              field(lang.Expr)
-              ~ field(`,` *> rightSibling(not(ExprTry)))
-            ).rewrite: (expr, comma) =>
-              splice(expr, comma, ExprTry())
-          // Expr has been parsed and ExprTry can be removed
+              parent(leftSibling(ExprTry) *> tok(TLAReader.BracesGroup)) *>
+                tok(`,`) <* rightSibling(not(ExprTry) *> not(lang.Expr))
+            ).rewrite: comma =>
+              splice(comma.unparent(), ExprTry())
+          // CASE is complete when every branch is parsed.
           | on(
+            leftSibling(ExprTry) *>
+              skip(defns.CASE)
+              ~ field(
+                repeatedSepBy1(defns.`[]`)(
+                  skip(ExprTry)
+                    ~ field(lang.Expr)
+                    ~ skip(TLAReader.`->`)
+                    ~ skip(ExprTry)
+                    ~ field(lang.Expr)
+                    ~ trailing,
+                ),
+              )
+              ~ field(
+                optional(
+                  skip(defns.OTHER)
+                    ~ skip(TLAReader.`->`)
+                    ~ skip(ExprTry)
+                    ~ field(lang.Expr)
+                    ~ eof,
+                ),
+              )
+              ~ trailing,
+          ).rewrite: (cases, other) =>
+              splice(
+                lang.Expr(
+                  lang.Expr.Case(
+                    lang.Expr.Case.Branches(
+                      cases.iterator.map((pred, branch) =>
+                        lang.Expr.Case.Branch(pred.unparent(), branch.unparent()),
+                      ),
+                    ),
+                    lang.Expr.Case.Other(
+                      other match
+                        case None       => lang.Expr.Case.None()
+                        case Some(expr) => expr.unparent()
+                    ),
+                  ),
+                )
+              )
+          // If the CASE is not complete, insert ExprTry after [], ->, and OTHER
+          //  as well as before the first case.
+          | on(
+            leftSibling(leftSibling(ExprTry) *> defns.CASE) *>
+                field(not(lang.Expr) *> not(ExprTry) *> anyNode)
+                ~ trailing,
+          ).rewrite: first =>
+            splice(ExprTry(), first.unparent())
+          | on(
+            (tok(defns.`[]`) | tok(TLAReader.`->`)) 
+              <* rightSibling(not(lang.Expr) *> not(ExprTry))
+          ).rewrite: split =>
+            splice(split.unparent(), ExprTry())
+          | on(
+            leftSibling(defns.OTHER) *> 
+              tok(TLAReader.`->`) 
+                <* rightSibling(not(lang.Expr) *> not(ExprTry))
+          ).rewrite: split =>
+            splice(split.unparent(), ExprTry())
+          // Parenthesis can be removed when its children are parsed
+          | on(
+            leftSibling(ExprTry) *> 
+              tok(TLAReader.ParenthesesGroup) *>
+                children(
+                  skip(ExprTry)
+                  ~ field(lang.Expr)
+                  ~ eof
+                )
+          ).rewrite: expr =>
+            splice(expr.unparent())
+          // Mark the children of the parenthesis
+          | on(parent(leftSibling(ExprTry) *> tok(TLAReader.ParenthesesGroup)) *>
+              not(leftSibling(anyNode)) *>
+              not(ExprTry) *> not(lang.Expr) *> anyNode
+          ).rewrite: node =>
+            splice(ExprTry(), node.unparent())
+      *> pass(once = false, strategy = pass.bottomUp)
+        .rules:
+          // Expr has been parsed sucessfully, and ExprTry can be removed
+          // I have to do it this way, otherwise ExprTry might get removed too early.
+          on(
             skip(ExprTry)
             ~ field(lang.Expr)
             ~ eof
@@ -121,3 +220,12 @@ object ExprMarker extends PassSeq:
               child.unparent(),
             )
   end removeNestedExpr
+
+
+
+// | on(
+//   skip(ExprTry)
+//   ~ field(tok(lang.Expr) <* rightSibling(tok(`,`) | tok(`->`) | tok(defns.`[]`)))
+//   ~ trailing
+// ).rewrite: expr =>
+//   splice(expr.unparent())
