@@ -60,7 +60,7 @@ class ExprMarkerTests extends munit.FunSuite:
         Node.Top(lang.Expr(lang.Expr.StringLiteral("string"))),
     )
 
-  test("ParanthesisGroup"):
+  test("ParenthesesGroup"):
     assertEquals(
         Node.Top(ExprTry(), TLAReader.ParenthesesGroup(
           TLAReader.NumberLiteral("1")
