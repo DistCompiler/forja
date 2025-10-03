@@ -115,6 +115,33 @@ class ExprMarkerTests extends munit.FunSuite:
       )
     )
 
+  test("Tuple Literal"):
+    // empty tuple
+    assertEquals(
+      Node.Top(ExprTry(), TLAReader.TupleGroup()).parseNode,
+      Node.Top(lang.Expr(lang.Expr.TupleLiteral()))
+    )
+    // tuple with three elements
+    assertEquals(
+      Node.Top(ExprTry(), TLAReader.TupleGroup(
+        TLAReader.NumberLiteral("1"),
+        TLAReader.`,`(","),
+        TLAReader.StringLiteral("two"),
+        TLAReader.`,`(","),
+        TLAReader.NumberLiteral("3")
+      )).parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.TupleLiteral(
+            lang.Expr(lang.Expr.NumberLiteral("1")),
+            lang.Expr(lang.Expr.StringLiteral("two")),
+            lang.Expr(lang.Expr.NumberLiteral("3")),
+          ),
+        )
+      )
+    )
+  
+
 
   test("Case"):
     assertEquals(

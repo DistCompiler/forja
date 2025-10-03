@@ -68,6 +68,7 @@ object ExprMarker extends PassSeq:
       ~ trailing
   end parsedChildrenSepBy
 
+  // TODO: I wonder if this pattern is a bad idea
   def firstUnmarkedChildStart(
     paren: Token
   ): SeqPattern[Node] = 
@@ -126,8 +127,26 @@ object ExprMarker extends PassSeq:
               ~ trailing
           ).rewrite: lit =>
             splice(lang.Expr(lang.Expr.StringLiteral().like(lit)))
-          //
-          // Braces Group is complete when all the elements are parsed
+          // TupleLiteral is complete when all the elements are parsed
+          | on(
+              parsedChildrenSepBy(TLAReader.TupleGroup, `,`)
+          ).rewrite: exprs =>
+            splice(
+              lang.Expr(
+                lang.Expr.TupleLiteral(exprs.iterator.map(_.unparent())),
+              )
+          )
+           // If the TupleLiteral not complete, mark the elements with ExprTry
+          // Mark the first child in the first pass, and then mark the rest in the second
+          | on(
+            firstUnmarkedChildStart(TLAReader.TupleGroup)
+          ).rewrite: first =>
+            splice(ExprTry(), first.unparent())
+          | on(
+            unMarkedChildComma(TLAReader.TupleGroup)
+          ).rewrite: comma =>
+              splice(comma.unparent(), ExprTry())
+          // SetLiteral is complete when all the elements are parsed
           | on(
               parsedChildrenSepBy(TLAReader.BracesGroup, `,`)
           ).rewrite: exprs =>
@@ -136,9 +155,8 @@ object ExprMarker extends PassSeq:
                 lang.Expr.SetLiteral(exprs.iterator.map(_.unparent())),
               )
           )
-          // If the braces group is not complete, mark the elements with ExprTry
+          // If the SetLiteral is not complete, mark the elements with ExprTry
           // Mark the first child in the first pass, and then mark the rest in the second
-          // TODO: I wonder if this pattern is a bad idea
           | on(
             firstUnmarkedChildStart(TLAReader.BracesGroup)
           ).rewrite: first =>
