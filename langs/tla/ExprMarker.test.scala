@@ -40,7 +40,7 @@ class ExprMarkerTests extends munit.FunSuite:
           ),
         ),
       )
-        // instrumentWithTracer(forja.manip.RewriteDebugTracer(os.pwd / "dbg_exprmarker")):
+      // instrumentWithTracer(forja.manip.RewriteDebugTracer(os.pwd / "dbg_exprmarker")):
         ExprMarker(freshTop)
       Node.Top(
         freshTop(lang.Module)(lang.Module.Defns)(lang.Operator)(
@@ -70,7 +70,7 @@ class ExprMarkerTests extends munit.FunSuite:
     // TODO: paranthesis with op
 
 
-  test("Set Literal"):
+  test("SetLiteral"):
     // empty set    
     assertEquals(
       Node.Top(ExprTry(), TLAReader.BracesGroup()).parseNode,
@@ -78,13 +78,16 @@ class ExprMarkerTests extends munit.FunSuite:
     )
     // set with three elements
     assertEquals(
-      Node.Top(ExprTry(), TLAReader.BracesGroup(
-        TLAReader.NumberLiteral("1"),
-        TLAReader.`,`(","),
-        TLAReader.NumberLiteral("2"),
-        TLAReader.`,`(","),
-        TLAReader.NumberLiteral("3")
-      )).parseNode,
+      Node.Top(
+        ExprTry(),
+        TLAReader.BracesGroup(
+          TLAReader.NumberLiteral("1"),
+          TLAReader.`,`(","),
+          TLAReader.NumberLiteral("2"),
+          TLAReader.`,`(","),
+          TLAReader.NumberLiteral("3")
+        )
+      ).parseNode,
       Node.Top(
         lang.Expr(
           lang.Expr.SetLiteral(
@@ -97,13 +100,16 @@ class ExprMarkerTests extends munit.FunSuite:
     )
     // nested sets
     assertEquals(
-      Node.Top(ExprTry(), TLAReader.BracesGroup(
-        TLAReader.NumberLiteral("1"),
-        TLAReader.`,`(","),
-        TLAReader.BracesGroup(),
-        TLAReader.`,`(","),
-        TLAReader.NumberLiteral("3")
-      )).parseNode,
+      Node.Top(
+        ExprTry(),
+        TLAReader.BracesGroup(
+          TLAReader.NumberLiteral("1"),
+          TLAReader.`,`(","),
+          TLAReader.BracesGroup(),
+          TLAReader.`,`(","),
+          TLAReader.NumberLiteral("3")
+        )
+      ).parseNode,
       Node.Top(
         lang.Expr(
           lang.Expr.SetLiteral(
@@ -115,7 +121,7 @@ class ExprMarkerTests extends munit.FunSuite:
       )
     )
 
-  test("Tuple Literal"):
+  test("TupleLiteral"):
     // empty tuple
     assertEquals(
       Node.Top(ExprTry(), TLAReader.TupleGroup()).parseNode,
@@ -123,19 +129,61 @@ class ExprMarkerTests extends munit.FunSuite:
     )
     // tuple with three elements
     assertEquals(
-      Node.Top(ExprTry(), TLAReader.TupleGroup(
-        TLAReader.NumberLiteral("1"),
-        TLAReader.`,`(","),
-        TLAReader.StringLiteral("two"),
-        TLAReader.`,`(","),
-        TLAReader.NumberLiteral("3")
-      )).parseNode,
+      Node.Top(
+        ExprTry(),
+        TLAReader.TupleGroup(
+          TLAReader.NumberLiteral("1"),
+          TLAReader.`,`(","),
+          TLAReader.StringLiteral("two"),
+          TLAReader.`,`(","),
+          TLAReader.NumberLiteral("3")
+        )
+      ).parseNode,
       Node.Top(
         lang.Expr(
           lang.Expr.TupleLiteral(
             lang.Expr(lang.Expr.NumberLiteral("1")),
             lang.Expr(lang.Expr.StringLiteral("two")),
             lang.Expr(lang.Expr.NumberLiteral("3")),
+          ),
+        )
+      )
+    )
+
+  test("RecordLiteral"):
+    // record with three fields
+    assertEquals(
+      Node.Top(
+        ExprTry(), 
+        TLAReader.SqBracketsGroup(
+          TLAReader.Alpha("X"),
+          TLAReader.`|->`("|->"),
+          TLAReader.NumberLiteral("1"),
+          TLAReader.`,`(","),
+          TLAReader.Alpha("Y"),
+          TLAReader.`|->`("|->"),
+          TLAReader.NumberLiteral("2"),
+          TLAReader.`,`(","),
+          TLAReader.Alpha("Z"),
+          TLAReader.`|->`("|->"),
+          TLAReader.NumberLiteral("3"),
+        )
+      ).parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.RecordLiteral(
+            lang.Expr.RecordLiteral.Field(
+              lang.Id("X"),
+              lang.Expr(lang.Expr.NumberLiteral("1")),
+            ),
+            lang.Expr.RecordLiteral.Field(
+              lang.Id("Y"),
+              lang.Expr(lang.Expr.NumberLiteral("2")),
+            ),
+            lang.Expr.RecordLiteral.Field(
+              lang.Id("Z"),
+              lang.Expr(lang.Expr.NumberLiteral("3")),
+            )
           ),
         )
       )

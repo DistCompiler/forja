@@ -28,20 +28,12 @@ object ExprMarker extends PassSeq:
     buildExpressions,
   )
 
-// PART 1
 
-// HARD:
-// - identifiers
-// - opcalls
-// - prefix operators
-// - infix operators
-// - postfix operators
 
-// EASY:
+// TODO:
 
 // - records
 // - "." operand
-// - tuples
 
 // - IF/THEN/ELSE
 // - LET
@@ -54,7 +46,7 @@ object ExprMarker extends PassSeq:
     parent: Token, split: SeqPattern[?]
   ): SeqPattern[List[Node]] =
     leftSibling(ExprTry) *>
-      field(tok(parent) *>
+      tok(parent) *>
         children:
           field(
             repeatedSepBy(split)(
@@ -64,8 +56,6 @@ object ExprMarker extends PassSeq:
             )
           )
           ~ eof
-      )
-      ~ trailing
   end parsedChildrenSepBy
 
   // TODO: I wonder if this pattern is a bad idea
@@ -77,12 +67,13 @@ object ExprMarker extends PassSeq:
       not(ExprTry) *> not(lang.Expr) *> anyNode
   end firstUnmarkedChildStart
   
-  def unMarkedChildComma(
+  def unMarkedChildSplit(
     paren: Token,
+    split: Token,
   ): SeqPattern[Node] =
     parent(leftSibling(ExprTry) *> paren) *>
-       possibleExprTryToRight(tok(`,`))
-  end unMarkedChildComma
+       possibleExprTryToRight(split)
+  end unMarkedChildSplit
 
   def rightSiblingNotExprTry(): SeqPattern[Unit] =
     rightSibling(not(lang.Expr) *> not(ExprTry))
@@ -143,9 +134,9 @@ object ExprMarker extends PassSeq:
           ).rewrite: first =>
             splice(ExprTry(), first.unparent())
           | on(
-            unMarkedChildComma(TLAReader.TupleGroup)
-          ).rewrite: comma =>
-              splice(comma.unparent(), ExprTry())
+            unMarkedChildSplit(TLAReader.TupleGroup, `,`)
+          ).rewrite: split =>
+              splice(split.unparent(), ExprTry())
           // SetLiteral is complete when all the elements are parsed
           | on(
               parsedChildrenSepBy(TLAReader.BracesGroup, `,`)
@@ -162,9 +153,42 @@ object ExprMarker extends PassSeq:
           ).rewrite: first =>
             splice(ExprTry(), first.unparent())
           | on(
-            unMarkedChildComma(TLAReader.BracesGroup)
-          ).rewrite: comma =>
-              splice(comma.unparent(), ExprTry())
+            unMarkedChildSplit(TLAReader.BracesGroup, `,`)
+          ).rewrite: split =>
+              splice(split.unparent(), ExprTry())
+          // RecordLiteral is complete when all the elements are parsed
+          | on(
+            leftSibling(ExprTry) *> tok(TLAReader.SqBracketsGroup) *>
+              children:
+                field(
+                  repeatedSepBy1(`,`)(
+                    field(TLAReader.Alpha)
+                    ~ skip(TLAReader.`|->`)
+                    ~ skip(ExprTry)
+                    ~ field(lang.Expr)
+                    ~ trailing
+                  )
+                )
+                ~ eof
+          ).rewrite: records =>
+            splice(
+              lang.Expr(
+                lang.Expr.RecordLiteral(
+                  records.iterator.map(
+                    (id, expr) =>
+                        lang.Expr.RecordLiteral.Field(
+                          lang.Id().like(id.unparent()),
+                          expr.unparent(),
+                        )
+                  )
+                )
+              )
+            )
+          // If the RecordLiteral is not complete, place ExprTry after each |->
+          | on (
+            unMarkedChildSplit(TLAReader.SqBracketsGroup, `|->`)
+          ).rewrite: split =>
+            splice(split.unparent(), ExprTry())   
           // CASE is complete when every branch is parsed.
           | on(
             leftSibling(ExprTry) *>
