@@ -60,6 +60,19 @@ class ExprMarkerTests extends munit.FunSuite:
         Node.Top(lang.Expr(lang.Expr.StringLiteral("string"))),
     )
 
+  test("Id"):
+    assertEquals(
+        Node.Top(ExprTry(), TLAReader.Alpha("X")).parseNode,
+        Node.Top(
+          lang.Expr(
+            lang.Expr.OpCall(
+              lang.Id("X"),
+              lang.Expr.OpCall.Params()
+            )
+          )
+        )
+    )
+
   test("ParenthesesGroup"):
     assertEquals(
         Node.Top(ExprTry(), TLAReader.ParenthesesGroup(
@@ -189,6 +202,56 @@ class ExprMarkerTests extends munit.FunSuite:
       )
     )
   
+  test("Projection (Record Field Acess)"):
+    assertEquals(
+      Node.Top(
+        ExprTry(),
+        TLAReader.Alpha("X"),
+        defns.`.`("."),
+        TLAReader.Alpha("Y")
+      ).parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.Project(
+            lang.Expr(
+              lang.Expr.OpCall(
+                lang.Id("X"),
+                lang.Expr.OpCall.Params(),
+              ),
+            ),
+            lang.Id("Y"),
+          ),
+        )
+      )
+    )
+    assertEquals(
+      Node.Top(
+        ExprTry(),
+        TLAReader.Alpha("X"),
+        defns.`.`("."),
+        TLAReader.Alpha("Y"),
+        defns.`.`("."),
+        TLAReader.Alpha("Z")
+      ).parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.Project(
+            lang.Expr(
+              lang.Expr.Project(
+                lang.Expr(
+                  lang.Expr.OpCall(
+                    lang.Id("X"),
+                    lang.Expr.OpCall.Params(),
+                  )
+                ),
+                lang.Id("Y"),
+              )
+            ),
+            lang.Id("Z")
+          )
+        )
+      )
+    )
 
 
   test("Case"):

@@ -26,14 +26,12 @@ object ExprMarker extends PassSeq:
 
   lazy val passes = List(
     buildExpressions,
+    // removeNestedExpr
   )
 
 
 
 // TODO:
-
-// - records
-// - "." operand
 
 // - IF/THEN/ELSE
 // - LET
@@ -105,7 +103,7 @@ object ExprMarker extends PassSeq:
     val rules = 
       pass(once = false, strategy = pass.bottomUp)
         .rules:
-          // Parse Number and String literals
+          // Parse Number and String Literals
           on(
             leftSibling(ExprTry) *>
               field(TLAReader.NumberLiteral)
@@ -118,6 +116,20 @@ object ExprMarker extends PassSeq:
               ~ trailing
           ).rewrite: lit =>
             splice(lang.Expr(lang.Expr.StringLiteral().like(lit)))
+          // Parse Id
+          | on(
+            leftSibling(ExprTry) *>
+              field(TLAReader.Alpha)
+              ~ trailing
+          ).rewrite: id =>
+            splice(
+              lang.Expr(
+                lang.Expr.OpCall(
+                  lang.Id().like(id.unparent()),
+                  lang.Expr.OpCall.Params(),
+                ),
+              )
+            )
           // TupleLiteral is complete when all the elements are parsed
           | on(
               parsedChildrenSepBy(TLAReader.TupleGroup, `,`)
@@ -188,7 +200,23 @@ object ExprMarker extends PassSeq:
           | on (
             unMarkedChildSplit(TLAReader.SqBracketsGroup, `|->`)
           ).rewrite: split =>
-            splice(split.unparent(), ExprTry())   
+            splice(split.unparent(), ExprTry())
+          // Parse Projection (Record field access)
+          | on(
+            leftSibling(ExprTry) *>
+              field(lang.Expr)
+              ~ skip(defns.`.`)
+              ~ field(TLAReader.Alpha)
+              ~ trailing
+          ).rewrite: (expr, id) =>
+            splice(
+              lang.Expr(
+                lang.Expr.Project(
+                  expr.unparent(),
+                  lang.Id().like(id.unparent())
+                )
+              )
+            )
           // CASE is complete when every branch is parsed.
           | on(
             leftSibling(ExprTry) *>
