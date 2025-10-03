@@ -29,14 +29,6 @@ object ExprMarker extends PassSeq:
     // removeNestedExpr
   )
 
-
-
-// TODO:
-
-// - IF/THEN/ELSE
-// - LET
-
-
   object ExprTry extends Token
   def inputWellformed: Wellformed = TLAParser.outputWellformed
 
@@ -188,10 +180,10 @@ object ExprMarker extends PassSeq:
                 lang.Expr.RecordLiteral(
                   records.iterator.map(
                     (id, expr) =>
-                        lang.Expr.RecordLiteral.Field(
-                          lang.Id().like(id.unparent()),
-                          expr.unparent(),
-                        )
+                      lang.Expr.RecordLiteral.Field(
+                        lang.Id().like(id.unparent()),
+                        expr.unparent(),
+                      )
                   )
                 )
               )
@@ -217,6 +209,34 @@ object ExprMarker extends PassSeq:
                 )
               )
             )
+          // IF is complete when every branch is parsed.
+          | on(
+            leftSibling(ExprTry) *>
+              skip(defns.IF)
+              ~ skip(ExprTry)
+              ~ field(lang.Expr)
+              ~ skip(defns.THEN)
+              ~ skip(ExprTry)
+              ~ field(lang.Expr)
+              ~ skip(defns.ELSE)
+              ~ skip(ExprTry)
+              ~ field(lang.Expr)
+              ~ trailing,
+          ).rewrite: (pred, t, f) =>
+            splice(
+              lang.Expr(
+                lang.Expr.If(
+                  pred.unparent(),
+                  t.unparent(),
+                  f.unparent(),
+                )
+              )
+            )
+          // If IF is not complete, place ExprTry before the pred and branches
+         | on(
+            possibleExprTryToRight(tok(defns.IF) | tok(defns.THEN) | tok(defns.ELSE))
+          ).rewrite: split =>
+            splice(split.unparent(), ExprTry())
           // CASE is complete when every branch is parsed.
           | on(
             leftSibling(ExprTry) *>
@@ -272,6 +292,32 @@ object ExprMarker extends PassSeq:
             possibleExprTryToRight(leftSibling(defns.OTHER) *> tok(TLAReader.`->`))
           ).rewrite: split =>
             splice(split.unparent(), ExprTry())
+          // LET is complete when the definitions and the body are parsed
+          // I am assuming TLAParser will have inserted an ExpTry before the let body
+          | on (
+            leftSibling(ExprTry) *>
+              field(tok(TLAReader.LetGroup) *>
+                children(
+                  repeated:
+                    tok(lang.Operator) 
+                    | tok(lang.ModuleDefinition) 
+                    | tok(lang.Recursive) 
+                )
+              )
+              ~ skip(ExprTry)
+              ~ field(lang.Expr)
+              ~ trailing
+          ).rewrite: (defs, body) =>
+            splice(
+              lang.Expr(
+                lang.Expr.Let(
+                  lang.Expr.Let.Defns(
+                    defs.iterator.map(_.unparent())
+                  ),
+                  body.unparent()
+                )
+              )
+            )
           // Parentheses can be removed when its children are parsed
           | on(
             leftSibling(ExprTry) *> 

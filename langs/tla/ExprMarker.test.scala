@@ -254,6 +254,33 @@ class ExprMarkerTests extends munit.FunSuite:
     )
 
 
+  test("If"):
+    assertEquals(
+      Node.Top(
+        ExprTry(),
+        defns.IF(),
+        TLAReader.Alpha("A"),
+        defns.THEN(),
+        TLAReader.NumberLiteral("1"),
+        defns.ELSE(),
+        TLAReader.NumberLiteral("2"),
+      ).parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.If(
+            lang.Expr(
+              lang.Expr.OpCall(
+                lang.Id("A"),
+                lang.Expr.OpCall.Params(),
+              ),
+            ),
+            lang.Expr(lang.Expr.NumberLiteral("1")),
+            lang.Expr(lang.Expr.NumberLiteral("2")),
+          ),
+        ),
+      )
+    )
+  
   test("Case"):
     assertEquals(
       Node.Top(
@@ -326,43 +353,64 @@ class ExprMarkerTests extends munit.FunSuite:
       )
     )
 
-
+  // This test assumes that TLAParser has parsed the definitions and has inserted the ExprTry before the let body.
+  // TODO: I am not sure what kind of node I should pass to lang.Operator. It complains if it is an Expr.
   // test("LET"):
   //   assertEquals(
-  //     """LET x == 1
-  //       |y == 2
-  //       |IN  {y, x}""".stripMargin.parseStr,
   //     Node.Top(
-  //       lang.Expr.Let(
-  //         lang.Expr.Let.Defns(
-  //           lang.Operator(
-  //             lang.Id("x"),
-  //             lang.Operator.Params(),
-  //             lang.Expr(lang.Expr.NumberLiteral("1")),
-  //           ),
-  //           lang.Operator(
-  //             lang.Id("y"),
-  //             lang.Operator.Params(),
-  //             lang.Expr(lang.Expr.NumberLiteral("2")),
-  //           ),
+  //       ExprTry(),
+  //       TLAReader.LetGroup(
+  //         lang.Operator(
+  //           lang.Id("X"),
+  //           lang.Operator.Params(),
+  //           lang.Expr(lang.Expr.NumberLiteral("1")),
   //         ),
-  //         lang.Expr(
-  //           lang.Expr.SetLiteral(
-  //             lang.Expr(
-  //               lang.Expr.OpCall(
-  //                 lang.Id("y"),
-  //                 lang.Expr.OpCall.Params(),
-  //               ),
+  //         lang.Operator(
+  //           lang.Id("Y"),
+  //           lang.Operator.Params(),
+  //           lang.Expr(lang.Expr.NumberLiteral("2")),
+  //         ),
+  //       ),
+  //       ExprTry(),
+  //       TLAReader.BracesGroup(
+  //         TLAReader.Alpha("X"),
+  //         TLAReader.`,`(","),
+  //         TLAReader.Alpha("Y"),
+  //       )
+  //     ).parseNode,
+  //     Node.Top(
+  //       lang.Expr(
+  //         lang.Expr.Let(
+  //           lang.Expr.Let.Defns(
+  //             lang.Operator(
+  //               lang.Id("X"),
+  //               lang.Operator.Params(),
+  //               lang.Expr(lang.Expr.NumberLiteral("1")),
   //             ),
-  //             lang.Expr(
-  //               lang.Expr.OpCall(
-  //                 lang.Id("x"),
-  //                 lang.Expr.OpCall.Params(),
+  //             lang.Operator(
+  //               lang.Id("Y"),
+  //               lang.Operator.Params(),
+  //               lang.Expr(lang.Expr.NumberLiteral("2")),
+  //             ),
+  //           ),
+  //           lang.Expr(
+  //             lang.Expr.SetLiteral(
+  //               lang.Expr(
+  //                 lang.Expr.OpCall(
+  //                   lang.Id("Y"),
+  //                   lang.Expr.OpCall.Params(),
+  //                 ),
+  //               ),
+  //               lang.Expr(
+  //                 lang.Expr.OpCall(
+  //                   lang.Id("X"),
+  //                   lang.Expr.OpCall.Params(),
+  //                 ),
   //               ),
   //             ),
   //           ),
   //         ),
   //       ),
-  //     ),
+  //     )
   //   )
 
