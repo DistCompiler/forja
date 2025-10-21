@@ -16,7 +16,7 @@ package forja.langs.tla
 
 import forja.*
 import forja.dsl.*
-// import forja.source.{Source, SourceRange}
+
 import ExprMarker.ExprTry
 
 // Run with:
@@ -40,8 +40,9 @@ class ExprMarkerTests extends munit.FunSuite:
           ),
         ),
       )
-      // instrumentWithTracer(forja.manip.RewriteDebugTracer(os.pwd / "dbg_exprmarker")):
-        ExprMarker(freshTop)
+      /* instrumentWithTracer(forja.manip.RewriteDebugTracer(os.pwd /
+       * "dbg_exprmarker")): */
+      ExprMarker(freshTop)
       Node.Top(
         freshTop(lang.Module)(lang.Module.Defns)(lang.Operator)(
           lang.Expr,
@@ -50,57 +51,63 @@ class ExprMarkerTests extends munit.FunSuite:
 
   test("NumberLiteral"):
     assertEquals(
-        Node.Top(ExprTry(), TLAReader.NumberLiteral("1")).parseNode,
-        Node.Top(lang.Expr(lang.Expr.NumberLiteral("1"))),
+      Node.Top(ExprTry(), TLAReader.NumberLiteral("1")).parseNode,
+      Node.Top(lang.Expr(lang.Expr.NumberLiteral("1"))),
     )
 
   test("StringLiteral"):
     assertEquals(
-        Node.Top(ExprTry(), TLAReader.StringLiteral("string")).parseNode,
-        Node.Top(lang.Expr(lang.Expr.StringLiteral("string"))),
+      Node.Top(ExprTry(), TLAReader.StringLiteral("string")).parseNode,
+      Node.Top(lang.Expr(lang.Expr.StringLiteral("string"))),
     )
 
   test("Id"):
     assertEquals(
-        Node.Top(ExprTry(), TLAReader.Alpha("X")).parseNode,
-        Node.Top(
-          lang.Expr(
-            lang.Expr.OpCall(
-              lang.Id("X"),
-              lang.Expr.OpCall.Params()
-            )
-          )
-        )
+      Node.Top(ExprTry(), TLAReader.Alpha("X")).parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.OpCall(
+            lang.Id("X"),
+            lang.Expr.OpCall.Params(),
+          ),
+        ),
+      ),
     )
 
   test("ParenthesesGroup"):
     assertEquals(
-        Node.Top(ExprTry(), TLAReader.ParenthesesGroup(
-          TLAReader.NumberLiteral("1")
-        )).parseNode,
-        Node.Top(lang.Expr(lang.Expr.NumberLiteral("1"))),
+      Node
+        .Top(
+          ExprTry(),
+          TLAReader.ParenthesesGroup(
+            TLAReader.NumberLiteral("1"),
+          ),
+        )
+        .parseNode,
+      Node.Top(lang.Expr(lang.Expr.NumberLiteral("1"))),
     )
     // TODO: paranthesis with op
 
-
   test("SetLiteral"):
-    // empty set    
+    // empty set
     assertEquals(
       Node.Top(ExprTry(), TLAReader.BracesGroup()).parseNode,
-      Node.Top(lang.Expr(lang.Expr.SetLiteral()))
+      Node.Top(lang.Expr(lang.Expr.SetLiteral())),
     )
     // set with three elements
     assertEquals(
-      Node.Top(
-        ExprTry(),
-        TLAReader.BracesGroup(
-          TLAReader.NumberLiteral("1"),
-          TLAReader.`,`(","),
-          TLAReader.NumberLiteral("2"),
-          TLAReader.`,`(","),
-          TLAReader.NumberLiteral("3")
+      Node
+        .Top(
+          ExprTry(),
+          TLAReader.BracesGroup(
+            TLAReader.NumberLiteral("1"),
+            TLAReader.`,`(","),
+            TLAReader.NumberLiteral("2"),
+            TLAReader.`,`(","),
+            TLAReader.NumberLiteral("3"),
+          ),
         )
-      ).parseNode,
+        .parseNode,
       Node.Top(
         lang.Expr(
           lang.Expr.SetLiteral(
@@ -108,21 +115,23 @@ class ExprMarkerTests extends munit.FunSuite:
             lang.Expr(lang.Expr.NumberLiteral("2")),
             lang.Expr(lang.Expr.NumberLiteral("3")),
           ),
-        )
-      )
+        ),
+      ),
     )
     // nested sets
     assertEquals(
-      Node.Top(
-        ExprTry(),
-        TLAReader.BracesGroup(
-          TLAReader.NumberLiteral("1"),
-          TLAReader.`,`(","),
-          TLAReader.BracesGroup(),
-          TLAReader.`,`(","),
-          TLAReader.NumberLiteral("3")
+      Node
+        .Top(
+          ExprTry(),
+          TLAReader.BracesGroup(
+            TLAReader.NumberLiteral("1"),
+            TLAReader.`,`(","),
+            TLAReader.BracesGroup(),
+            TLAReader.`,`(","),
+            TLAReader.NumberLiteral("3"),
+          ),
         )
-      ).parseNode,
+        .parseNode,
       Node.Top(
         lang.Expr(
           lang.Expr.SetLiteral(
@@ -130,28 +139,30 @@ class ExprMarkerTests extends munit.FunSuite:
             lang.Expr(lang.Expr.SetLiteral()),
             lang.Expr(lang.Expr.NumberLiteral("3")),
           ),
-        )
-      )
+        ),
+      ),
     )
 
   test("TupleLiteral"):
     // empty tuple
     assertEquals(
       Node.Top(ExprTry(), TLAReader.TupleGroup()).parseNode,
-      Node.Top(lang.Expr(lang.Expr.TupleLiteral()))
+      Node.Top(lang.Expr(lang.Expr.TupleLiteral())),
     )
     // tuple with three elements
     assertEquals(
-      Node.Top(
-        ExprTry(),
-        TLAReader.TupleGroup(
-          TLAReader.NumberLiteral("1"),
-          TLAReader.`,`(","),
-          TLAReader.StringLiteral("two"),
-          TLAReader.`,`(","),
-          TLAReader.NumberLiteral("3")
+      Node
+        .Top(
+          ExprTry(),
+          TLAReader.TupleGroup(
+            TLAReader.NumberLiteral("1"),
+            TLAReader.`,`(","),
+            TLAReader.StringLiteral("two"),
+            TLAReader.`,`(","),
+            TLAReader.NumberLiteral("3"),
+          ),
         )
-      ).parseNode,
+        .parseNode,
       Node.Top(
         lang.Expr(
           lang.Expr.TupleLiteral(
@@ -159,29 +170,31 @@ class ExprMarkerTests extends munit.FunSuite:
             lang.Expr(lang.Expr.StringLiteral("two")),
             lang.Expr(lang.Expr.NumberLiteral("3")),
           ),
-        )
-      )
+        ),
+      ),
     )
 
   test("RecordLiteral"):
     // record with three fields
     assertEquals(
-      Node.Top(
-        ExprTry(), 
-        TLAReader.SqBracketsGroup(
-          TLAReader.Alpha("X"),
-          TLAReader.`|->`("|->"),
-          TLAReader.NumberLiteral("1"),
-          TLAReader.`,`(","),
-          TLAReader.Alpha("Y"),
-          TLAReader.`|->`("|->"),
-          TLAReader.NumberLiteral("2"),
-          TLAReader.`,`(","),
-          TLAReader.Alpha("Z"),
-          TLAReader.`|->`("|->"),
-          TLAReader.NumberLiteral("3"),
+      Node
+        .Top(
+          ExprTry(),
+          TLAReader.SqBracketsGroup(
+            TLAReader.Alpha("X"),
+            TLAReader.`|->`("|->"),
+            TLAReader.NumberLiteral("1"),
+            TLAReader.`,`(","),
+            TLAReader.Alpha("Y"),
+            TLAReader.`|->`("|->"),
+            TLAReader.NumberLiteral("2"),
+            TLAReader.`,`(","),
+            TLAReader.Alpha("Z"),
+            TLAReader.`|->`("|->"),
+            TLAReader.NumberLiteral("3"),
+          ),
         )
-      ).parseNode,
+        .parseNode,
       Node.Top(
         lang.Expr(
           lang.Expr.RecordLiteral(
@@ -196,20 +209,22 @@ class ExprMarkerTests extends munit.FunSuite:
             lang.Expr.RecordLiteral.Field(
               lang.Id("Z"),
               lang.Expr(lang.Expr.NumberLiteral("3")),
-            )
+            ),
           ),
-        )
-      )
+        ),
+      ),
     )
-  
+
   test("Projection (Record Field Acess)"):
     assertEquals(
-      Node.Top(
-        ExprTry(),
-        TLAReader.Alpha("X"),
-        defns.`.`("."),
-        TLAReader.Alpha("Y")
-      ).parseNode,
+      Node
+        .Top(
+          ExprTry(),
+          TLAReader.Alpha("X"),
+          defns.`.`("."),
+          TLAReader.Alpha("Y"),
+        )
+        .parseNode,
       Node.Top(
         lang.Expr(
           lang.Expr.Project(
@@ -221,18 +236,20 @@ class ExprMarkerTests extends munit.FunSuite:
             ),
             lang.Id("Y"),
           ),
-        )
-      )
+        ),
+      ),
     )
     assertEquals(
-      Node.Top(
-        ExprTry(),
-        TLAReader.Alpha("X"),
-        defns.`.`("."),
-        TLAReader.Alpha("Y"),
-        defns.`.`("."),
-        TLAReader.Alpha("Z")
-      ).parseNode,
+      Node
+        .Top(
+          ExprTry(),
+          TLAReader.Alpha("X"),
+          defns.`.`("."),
+          TLAReader.Alpha("Y"),
+          defns.`.`("."),
+          TLAReader.Alpha("Z"),
+        )
+        .parseNode,
       Node.Top(
         lang.Expr(
           lang.Expr.Project(
@@ -242,29 +259,30 @@ class ExprMarkerTests extends munit.FunSuite:
                   lang.Expr.OpCall(
                     lang.Id("X"),
                     lang.Expr.OpCall.Params(),
-                  )
+                  ),
                 ),
                 lang.Id("Y"),
-              )
+              ),
             ),
-            lang.Id("Z")
-          )
-        )
-      )
+            lang.Id("Z"),
+          ),
+        ),
+      ),
     )
-
 
   test("If"):
     assertEquals(
-      Node.Top(
-        ExprTry(),
-        defns.IF(),
-        TLAReader.Alpha("A"),
-        defns.THEN(),
-        TLAReader.NumberLiteral("1"),
-        defns.ELSE(),
-        TLAReader.NumberLiteral("2"),
-      ).parseNode,
+      Node
+        .Top(
+          ExprTry(),
+          defns.IF(),
+          TLAReader.Alpha("A"),
+          defns.THEN(),
+          TLAReader.NumberLiteral("1"),
+          defns.ELSE(),
+          TLAReader.NumberLiteral("2"),
+        )
+        .parseNode,
       Node.Top(
         lang.Expr(
           lang.Expr.If(
@@ -278,17 +296,22 @@ class ExprMarkerTests extends munit.FunSuite:
             lang.Expr(lang.Expr.NumberLiteral("2")),
           ),
         ),
-      )
+      ),
     )
-  
+
   test("Case"):
     assertEquals(
+      Node
+        .Top(
+          ExprTry(),
+          defns.CASE(),
+          TLAReader.StringLiteral("A"),
+          TLAReader.`->`("->"),
+          TLAReader.NumberLiteral("1"),
+        )
+        .parseNode,
       Node.Top(
-        ExprTry(), 
-        defns.CASE(), TLAReader.StringLiteral("A"), TLAReader.`->`("->"), TLAReader.NumberLiteral("1")
-      ).parseNode,
-      Node.Top(
-          lang.Expr(
+        lang.Expr(
           lang.Expr.Case(
             lang.Expr.Case.Branches(
               lang.Expr.Case.Branch(
@@ -298,18 +321,25 @@ class ExprMarkerTests extends munit.FunSuite:
             ),
             lang.Expr.Case.Other(lang.Expr.Case.None()),
           ),
-        )
-      )
+        ),
+      ),
     )
     assertEquals(
+      Node
+        .Top(
+          ExprTry(),
+          defns.CASE(),
+          TLAReader.StringLiteral("A"),
+          TLAReader.`->`("->"),
+          TLAReader.NumberLiteral("1"),
+          defns.`[]`("[]"),
+          TLAReader.StringLiteral("B"),
+          TLAReader.`->`("->"),
+          TLAReader.NumberLiteral("2"),
+        )
+        .parseNode,
       Node.Top(
-        ExprTry(), 
-        defns.CASE(), TLAReader.StringLiteral("A"), TLAReader.`->`("->"), TLAReader.NumberLiteral("1"),
-        defns.`[]`("[]"), TLAReader.StringLiteral("B"), TLAReader.`->`("->"), TLAReader.NumberLiteral("2"),
-
-      ).parseNode,
-      Node.Top(
-          lang.Expr(
+        lang.Expr(
           lang.Expr.Case(
             lang.Expr.Case.Branches(
               lang.Expr.Case.Branch(
@@ -323,19 +353,28 @@ class ExprMarkerTests extends munit.FunSuite:
             ),
             lang.Expr.Case.Other(lang.Expr.Case.None()),
           ),
-        )
-      )
+        ),
+      ),
     )
     assertEquals(
+      Node
+        .Top(
+          ExprTry(),
+          defns.CASE(),
+          TLAReader.StringLiteral("A"),
+          TLAReader.`->`("->"),
+          TLAReader.NumberLiteral("1"),
+          defns.`[]`("[]"),
+          TLAReader.StringLiteral("B"),
+          TLAReader.`->`("->"),
+          TLAReader.NumberLiteral("2"),
+          defns.OTHER("OTHER"),
+          TLAReader.`->`("->"),
+          TLAReader.NumberLiteral("3"),
+        )
+        .parseNode,
       Node.Top(
-        ExprTry(), 
-        defns.CASE(), TLAReader.StringLiteral("A"), TLAReader.`->`("->"), TLAReader.NumberLiteral("1"),
-        defns.`[]`("[]"), TLAReader.StringLiteral("B"), TLAReader.`->`("->"), TLAReader.NumberLiteral("2"),
-        defns.OTHER("OTHER"), TLAReader.`->`("->"), TLAReader.NumberLiteral("3"),
-
-      ).parseNode,
-      Node.Top(
-          lang.Expr(
+        lang.Expr(
           lang.Expr.Case(
             lang.Expr.Case.Branches(
               lang.Expr.Case.Branch(
@@ -349,12 +388,14 @@ class ExprMarkerTests extends munit.FunSuite:
             ),
             lang.Expr.Case.Other(lang.Expr(lang.Expr.NumberLiteral("3"))),
           ),
-        )
-      )
+        ),
+      ),
     )
 
-  // This test assumes that TLAParser has parsed the definitions and has inserted the ExprTry before the let body.
-  // TODO: I am not sure what kind of node I should pass to lang.Operator. It complains if it is an Expr.
+  /* This test assumes that TLAParser has parsed the definitions and has
+   * inserted the ExprTry before the let body. */
+  /* TODO: I am not sure what kind of node I should pass to lang.Operator. It
+   * complains if it is an Expr. */
   // test("LET"):
   //   assertEquals(
   //     Node.Top(
@@ -413,4 +454,3 @@ class ExprMarkerTests extends munit.FunSuite:
   //       ),
   //     )
   //   )
-

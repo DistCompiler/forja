@@ -554,7 +554,7 @@ object Wellformed:
             throw IllegalArgumentException(
               s"$token's shape is not appropriate for adding cases ($shape)",
             )
-      
+
       def deleteShape(): Unit =
         token match
           case Node.Top =>

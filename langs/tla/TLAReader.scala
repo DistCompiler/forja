@@ -18,9 +18,9 @@ import cats.syntax.all.given
 
 import forja.*
 import forja.dsl.*
+import forja.langs.tla.ExprMarker.ExprTry
 import forja.source.{Reader, SourceRange}
 import forja.wf.Wellformed
-import forja.langs.tla.ExprMarker.ExprTry
 
 object TLAReader extends Reader:
   lazy val groupTokens: List[Token] = List(
