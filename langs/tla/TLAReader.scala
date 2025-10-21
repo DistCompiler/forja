@@ -18,6 +18,7 @@ import cats.syntax.all.given
 
 import forja.*
 import forja.dsl.*
+import forja.langs.tla.ExprMarker.ExprTry
 import forja.source.{Reader, SourceRange}
 import forja.wf.Wellformed
 
@@ -54,6 +55,8 @@ object TLAReader extends Reader:
         Comment,
         DashSeq,
         EqSeq,
+        //
+        ExprTry,
       )
         | choice(NonAlpha.instances.toSet)
         | choice(allOperators.toSet)
@@ -70,6 +73,7 @@ object TLAReader extends Reader:
     NumberLiteral ::= Atom
     Alpha ::= Atom
     LaTexLike ::= Atom
+    ExprTry ::= Atom
 
     StepMarker ::= fields(
       choice(StepMarker.Num, StepMarker.Plus, StepMarker.Star),
@@ -120,6 +124,7 @@ object TLAReader extends Reader:
   case object `:` extends NonAlpha
   case object `::` extends NonAlpha
   case object `<-` extends NonAlpha
+  case object `->` extends NonAlpha
   case object `|->` extends NonAlpha
   case object `,` extends NonAlpha
   case object `.` extends NonAlpha

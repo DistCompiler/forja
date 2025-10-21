@@ -1,0 +1,456 @@
+// Copyright 2024-2025 Forja Team
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package forja.langs.tla
+
+import forja.*
+import forja.dsl.*
+
+import ExprMarker.ExprTry
+
+// Run with:
+// scala-cli test . -- '*ExprMarker*'
+
+class ExprMarkerTests extends munit.FunSuite:
+  extension (top: Node.Top)
+    def parseNode: Node.Top =
+      val freshTop = Node.Top(
+        lang.Module(
+          lang.Id("TestMod"),
+          lang.Module.Extends(),
+          lang.Module.Defns(
+            lang.Operator(
+              lang.Id("test"),
+              lang.Operator.Params(),
+              lang.Expr(
+                top.unparentedChildren,
+              ),
+            ),
+          ),
+        ),
+      )
+      /* instrumentWithTracer(forja.manip.RewriteDebugTracer(os.pwd /
+       * "dbg_exprmarker")): */
+      ExprMarker(freshTop)
+      Node.Top(
+        freshTop(lang.Module)(lang.Module.Defns)(lang.Operator)(
+          lang.Expr,
+        ).unparentedChildren,
+      )
+
+  test("NumberLiteral"):
+    assertEquals(
+      Node.Top(ExprTry(), TLAReader.NumberLiteral("1")).parseNode,
+      Node.Top(lang.Expr(lang.Expr.NumberLiteral("1"))),
+    )
+
+  test("StringLiteral"):
+    assertEquals(
+      Node.Top(ExprTry(), TLAReader.StringLiteral("string")).parseNode,
+      Node.Top(lang.Expr(lang.Expr.StringLiteral("string"))),
+    )
+
+  test("Id"):
+    assertEquals(
+      Node.Top(ExprTry(), TLAReader.Alpha("X")).parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.OpCall(
+            lang.Id("X"),
+            lang.Expr.OpCall.Params(),
+          ),
+        ),
+      ),
+    )
+
+  test("ParenthesesGroup"):
+    assertEquals(
+      Node
+        .Top(
+          ExprTry(),
+          TLAReader.ParenthesesGroup(
+            TLAReader.NumberLiteral("1"),
+          ),
+        )
+        .parseNode,
+      Node.Top(lang.Expr(lang.Expr.NumberLiteral("1"))),
+    )
+    // TODO: paranthesis with op
+
+  test("SetLiteral"):
+    // empty set
+    assertEquals(
+      Node.Top(ExprTry(), TLAReader.BracesGroup()).parseNode,
+      Node.Top(lang.Expr(lang.Expr.SetLiteral())),
+    )
+    // set with three elements
+    assertEquals(
+      Node
+        .Top(
+          ExprTry(),
+          TLAReader.BracesGroup(
+            TLAReader.NumberLiteral("1"),
+            TLAReader.`,`(","),
+            TLAReader.NumberLiteral("2"),
+            TLAReader.`,`(","),
+            TLAReader.NumberLiteral("3"),
+          ),
+        )
+        .parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.SetLiteral(
+            lang.Expr(lang.Expr.NumberLiteral("1")),
+            lang.Expr(lang.Expr.NumberLiteral("2")),
+            lang.Expr(lang.Expr.NumberLiteral("3")),
+          ),
+        ),
+      ),
+    )
+    // nested sets
+    assertEquals(
+      Node
+        .Top(
+          ExprTry(),
+          TLAReader.BracesGroup(
+            TLAReader.NumberLiteral("1"),
+            TLAReader.`,`(","),
+            TLAReader.BracesGroup(),
+            TLAReader.`,`(","),
+            TLAReader.NumberLiteral("3"),
+          ),
+        )
+        .parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.SetLiteral(
+            lang.Expr(lang.Expr.NumberLiteral("1")),
+            lang.Expr(lang.Expr.SetLiteral()),
+            lang.Expr(lang.Expr.NumberLiteral("3")),
+          ),
+        ),
+      ),
+    )
+
+  test("TupleLiteral"):
+    // empty tuple
+    assertEquals(
+      Node.Top(ExprTry(), TLAReader.TupleGroup()).parseNode,
+      Node.Top(lang.Expr(lang.Expr.TupleLiteral())),
+    )
+    // tuple with three elements
+    assertEquals(
+      Node
+        .Top(
+          ExprTry(),
+          TLAReader.TupleGroup(
+            TLAReader.NumberLiteral("1"),
+            TLAReader.`,`(","),
+            TLAReader.StringLiteral("two"),
+            TLAReader.`,`(","),
+            TLAReader.NumberLiteral("3"),
+          ),
+        )
+        .parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.TupleLiteral(
+            lang.Expr(lang.Expr.NumberLiteral("1")),
+            lang.Expr(lang.Expr.StringLiteral("two")),
+            lang.Expr(lang.Expr.NumberLiteral("3")),
+          ),
+        ),
+      ),
+    )
+
+  test("RecordLiteral"):
+    // record with three fields
+    assertEquals(
+      Node
+        .Top(
+          ExprTry(),
+          TLAReader.SqBracketsGroup(
+            TLAReader.Alpha("X"),
+            TLAReader.`|->`("|->"),
+            TLAReader.NumberLiteral("1"),
+            TLAReader.`,`(","),
+            TLAReader.Alpha("Y"),
+            TLAReader.`|->`("|->"),
+            TLAReader.NumberLiteral("2"),
+            TLAReader.`,`(","),
+            TLAReader.Alpha("Z"),
+            TLAReader.`|->`("|->"),
+            TLAReader.NumberLiteral("3"),
+          ),
+        )
+        .parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.RecordLiteral(
+            lang.Expr.RecordLiteral.Field(
+              lang.Id("X"),
+              lang.Expr(lang.Expr.NumberLiteral("1")),
+            ),
+            lang.Expr.RecordLiteral.Field(
+              lang.Id("Y"),
+              lang.Expr(lang.Expr.NumberLiteral("2")),
+            ),
+            lang.Expr.RecordLiteral.Field(
+              lang.Id("Z"),
+              lang.Expr(lang.Expr.NumberLiteral("3")),
+            ),
+          ),
+        ),
+      ),
+    )
+
+  test("Projection (Record Field Acess)"):
+    assertEquals(
+      Node
+        .Top(
+          ExprTry(),
+          TLAReader.Alpha("X"),
+          defns.`.`("."),
+          TLAReader.Alpha("Y"),
+        )
+        .parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.Project(
+            lang.Expr(
+              lang.Expr.OpCall(
+                lang.Id("X"),
+                lang.Expr.OpCall.Params(),
+              ),
+            ),
+            lang.Id("Y"),
+          ),
+        ),
+      ),
+    )
+    assertEquals(
+      Node
+        .Top(
+          ExprTry(),
+          TLAReader.Alpha("X"),
+          defns.`.`("."),
+          TLAReader.Alpha("Y"),
+          defns.`.`("."),
+          TLAReader.Alpha("Z"),
+        )
+        .parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.Project(
+            lang.Expr(
+              lang.Expr.Project(
+                lang.Expr(
+                  lang.Expr.OpCall(
+                    lang.Id("X"),
+                    lang.Expr.OpCall.Params(),
+                  ),
+                ),
+                lang.Id("Y"),
+              ),
+            ),
+            lang.Id("Z"),
+          ),
+        ),
+      ),
+    )
+
+  test("If"):
+    assertEquals(
+      Node
+        .Top(
+          ExprTry(),
+          defns.IF(),
+          TLAReader.Alpha("A"),
+          defns.THEN(),
+          TLAReader.NumberLiteral("1"),
+          defns.ELSE(),
+          TLAReader.NumberLiteral("2"),
+        )
+        .parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.If(
+            lang.Expr(
+              lang.Expr.OpCall(
+                lang.Id("A"),
+                lang.Expr.OpCall.Params(),
+              ),
+            ),
+            lang.Expr(lang.Expr.NumberLiteral("1")),
+            lang.Expr(lang.Expr.NumberLiteral("2")),
+          ),
+        ),
+      ),
+    )
+
+  test("Case"):
+    assertEquals(
+      Node
+        .Top(
+          ExprTry(),
+          defns.CASE(),
+          TLAReader.StringLiteral("A"),
+          TLAReader.`->`("->"),
+          TLAReader.NumberLiteral("1"),
+        )
+        .parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.Case(
+            lang.Expr.Case.Branches(
+              lang.Expr.Case.Branch(
+                lang.Expr(lang.Expr.StringLiteral("A")),
+                lang.Expr(lang.Expr.NumberLiteral("1")),
+              ),
+            ),
+            lang.Expr.Case.Other(lang.Expr.Case.None()),
+          ),
+        ),
+      ),
+    )
+    assertEquals(
+      Node
+        .Top(
+          ExprTry(),
+          defns.CASE(),
+          TLAReader.StringLiteral("A"),
+          TLAReader.`->`("->"),
+          TLAReader.NumberLiteral("1"),
+          defns.`[]`("[]"),
+          TLAReader.StringLiteral("B"),
+          TLAReader.`->`("->"),
+          TLAReader.NumberLiteral("2"),
+        )
+        .parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.Case(
+            lang.Expr.Case.Branches(
+              lang.Expr.Case.Branch(
+                lang.Expr(lang.Expr.StringLiteral("A")),
+                lang.Expr(lang.Expr.NumberLiteral("1")),
+              ),
+              lang.Expr.Case.Branch(
+                lang.Expr(lang.Expr.StringLiteral("B")),
+                lang.Expr(lang.Expr.NumberLiteral("2")),
+              ),
+            ),
+            lang.Expr.Case.Other(lang.Expr.Case.None()),
+          ),
+        ),
+      ),
+    )
+    assertEquals(
+      Node
+        .Top(
+          ExprTry(),
+          defns.CASE(),
+          TLAReader.StringLiteral("A"),
+          TLAReader.`->`("->"),
+          TLAReader.NumberLiteral("1"),
+          defns.`[]`("[]"),
+          TLAReader.StringLiteral("B"),
+          TLAReader.`->`("->"),
+          TLAReader.NumberLiteral("2"),
+          defns.OTHER("OTHER"),
+          TLAReader.`->`("->"),
+          TLAReader.NumberLiteral("3"),
+        )
+        .parseNode,
+      Node.Top(
+        lang.Expr(
+          lang.Expr.Case(
+            lang.Expr.Case.Branches(
+              lang.Expr.Case.Branch(
+                lang.Expr(lang.Expr.StringLiteral("A")),
+                lang.Expr(lang.Expr.NumberLiteral("1")),
+              ),
+              lang.Expr.Case.Branch(
+                lang.Expr(lang.Expr.StringLiteral("B")),
+                lang.Expr(lang.Expr.NumberLiteral("2")),
+              ),
+            ),
+            lang.Expr.Case.Other(lang.Expr(lang.Expr.NumberLiteral("3"))),
+          ),
+        ),
+      ),
+    )
+
+  /* This test assumes that TLAParser has parsed the definitions and has
+   * inserted the ExprTry before the let body. */
+  /* TODO: I am not sure what kind of node I should pass to lang.Operator. It
+   * complains if it is an Expr. */
+  // test("LET"):
+  //   assertEquals(
+  //     Node.Top(
+  //       ExprTry(),
+  //       TLAReader.LetGroup(
+  //         lang.Operator(
+  //           lang.Id("X"),
+  //           lang.Operator.Params(),
+  //           lang.Expr(lang.Expr.NumberLiteral("1")),
+  //         ),
+  //         lang.Operator(
+  //           lang.Id("Y"),
+  //           lang.Operator.Params(),
+  //           lang.Expr(lang.Expr.NumberLiteral("2")),
+  //         ),
+  //       ),
+  //       ExprTry(),
+  //       TLAReader.BracesGroup(
+  //         TLAReader.Alpha("X"),
+  //         TLAReader.`,`(","),
+  //         TLAReader.Alpha("Y"),
+  //       )
+  //     ).parseNode,
+  //     Node.Top(
+  //       lang.Expr(
+  //         lang.Expr.Let(
+  //           lang.Expr.Let.Defns(
+  //             lang.Operator(
+  //               lang.Id("X"),
+  //               lang.Operator.Params(),
+  //               lang.Expr(lang.Expr.NumberLiteral("1")),
+  //             ),
+  //             lang.Operator(
+  //               lang.Id("Y"),
+  //               lang.Operator.Params(),
+  //               lang.Expr(lang.Expr.NumberLiteral("2")),
+  //             ),
+  //           ),
+  //           lang.Expr(
+  //             lang.Expr.SetLiteral(
+  //               lang.Expr(
+  //                 lang.Expr.OpCall(
+  //                   lang.Id("Y"),
+  //                   lang.Expr.OpCall.Params(),
+  //                 ),
+  //               ),
+  //               lang.Expr(
+  //                 lang.Expr.OpCall(
+  //                   lang.Id("X"),
+  //                   lang.Expr.OpCall.Params(),
+  //                 ),
+  //               ),
+  //             ),
+  //           ),
+  //         ),
+  //       ),
+  //     )
+  //   )
