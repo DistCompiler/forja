@@ -1,5 +1,5 @@
 {
-	"name": "DCal",
+	"name": "Forja",
 	"build": {
 		"dockerfile": "Dockerfile"
 	},
