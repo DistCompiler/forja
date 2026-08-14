@@ -12,4 +12,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: coursier/cache-action@v6
+      - run: ./format_src_check.sh
       - run: ./mill __.test

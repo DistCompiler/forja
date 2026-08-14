@@ -1,9 +1,0 @@
-package build.langs.calc
-
-import mill.*, scalalib.*
-
-object `package` extends build.ForjaModule:
-  def moduleDeps = Seq(build.forja)
-
-  object test extends ForjaTests
-end `package`

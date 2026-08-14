@@ -1,4 +1,4 @@
-//| mill-version: 1.1.5
+//| mill-version: 1.1.7
 //| mill-jvm-version: temurin:25
 //| mill-jvm-opts: ["--enable-native-access=ALL-UNNAMED"]
 //| mvnDeps:
@@ -11,7 +11,7 @@ import mill.api.Task.Simple
 import mill.api.TaskCtx
 
 trait ForjaModule extends ScalaModule, ScalafixModule:
-  def scalaVersion = "3.8.3"
+  def scalaVersion = "3.8.4"
   def scalacOptions = Seq(
     // "-Werror",
     "-Yexplicit-nulls",
@@ -19,8 +19,13 @@ trait ForjaModule extends ScalaModule, ScalafixModule:
     "-feature",
     "-source:future",
     "-Xcheck-macros",
+    // "-Xdebug-macros",
     "-explain-cyclic",
+    "-Wunused:imports",
     "-preview",
+    "-language:experimental.erasedDefinitions",
+    // "-Yprint-debug",
+    // "-Vprint:parser,typer",
   )
   override def forkArgs = super.forkArgs() ++ Seq(
     // TODO: fix when Scala 3.8?
@@ -41,75 +46,7 @@ end ForjaModule
 
 object forja extends ForjaModule:
   override def mvnDeps = Seq(
-    mvn"com.lihaoyi::sourcecode:0.4.4",
-    mvn"com.lihaoyi::os-lib:0.11.5",
-    mvn"org.typelevel::cats-core:2.13.0",
-    mvn"io.github.java-diff-utils:java-diff-utils:4.15",
-    mvn"dev.zio::izumi-reflect:3.0.9",
+    // TODO: when we need dependencies back
   )
   object test extends ForjaTests
-
-  private enum State:
-    case Normal, NextLineIsTemplate
-    case IsReplacing(count: Int)
-
-  def updateLimit22Apply(check: Boolean = false) = Task.Command:
-    allSourceFiles().foreach: src =>
-      var didReplace = false
-      var state = State.Normal
-      val replacedLines =
-        os.read.lines
-          .stream(src.path)
-          .flatMap:
-            case line @ s"$_// %%replicate22" if state == State.Normal =>
-              didReplace = true
-              state = State.NextLineIsTemplate
-              List(line)
-            case line if state == State.NextLineIsTemplate =>
-              state = State.IsReplacing(0)
-              var template = line
-              line +: (3 to 22).map: i =>
-                template = template
-                  .replace(s"T${i - 1}, U]", s"T${i - 1}, T$i, U]")
-                  .replace(
-                    s"t${i - 1}: T${i - 1})",
-                    s"t${i - 1}: T${i - 1}, t$i: T$i)",
-                  )
-                  .replace(
-                    s"t${i - 1}: C ?=> T${i - 1})",
-                    s"t${i - 1}: C ?=> T${i - 1}, t$i: C ?=> T$i)",
-                  )
-                  .replace(s"T${i - 1})", s"T${i - 1}, T$i)")
-                  .replace(s"t${i - 1})", s"t${i - 1}, t$i)")
-                  .replace(s"T${i - 1}]", s"T${i - 1}, T$i]")
-                template
-            case line @ s"$_// format: on"
-                if state.isInstanceOf[State.IsReplacing] =>
-              state = State.Normal
-              List(line)
-            case line if state.isInstanceOf[State.IsReplacing] =>
-              assert(state.asInstanceOf[State.IsReplacing].count <= 20)
-              state = State.IsReplacing(
-                state.asInstanceOf[State.IsReplacing].count + 1,
-              )
-              Nil
-            case line if state == State.Normal =>
-              List(line)
-            case line =>
-              assert(false, s"(in state $state) $line")
-          .toSeq
-
-      if check && didReplace && replacedLines != os.read.lines(src.path)
-      then TaskCtx.taskCtx.fail(s"out of date: ${src.path}")
-      if check
-      then println(s"ok ${src.path}")
-      else if didReplace && replacedLines != os.read.lines(src.path)
-      then
-        println(s"rewrite ${src.path}")
-        os.write.over(
-          src.path,
-          replacedLines.view.flatMap(line => List(line, System.lineSeparator())),
-        )
-      else println(s"no change ${src.path}")
-  end updateLimit22Apply
 end forja
